@@ -1,0 +1,4 @@
+VERSION = '3.2.0'
+BUILD = '20261018162541'
+PRODUCT = 'Helix Harness'
+SHELL_VERSION = 'helix-shell ' + VERSION

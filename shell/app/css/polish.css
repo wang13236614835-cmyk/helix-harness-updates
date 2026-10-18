@@ -1,0 +1,98 @@
+/* Helix 3.2.0 界面整理层：只覆盖样式，不改结构。放在所有样式表之后加载。 */
+:root{--nav-w:68px;--title-h:52px}
+.shell{grid-template-columns:var(--nav-w) var(--side,264px) 1fr var(--insp,360px);grid-template-rows:var(--title-h) 1fr var(--dock,200px) 30px}
+body{font-family:var(--f);-webkit-font-smoothing:antialiased}
+
+/* 顶栏：品牌 / 项目 / 搜索 / 连接状态 / 我 */
+.title{gap:14px;padding:0 16px;background:#0c2b2a;border-bottom:1px solid #ffffff12}
+.title .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#7be0c3,#1f9a7c);animation:none;box-shadow:0 4px 12px #0005}
+.title b{font-size:15px;letter-spacing:.02em}
+.title .proj{max-width:260px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:6px 12px;border-radius:9px;font-size:13px;background:#ffffff10;border-color:#ffffff1f}
+.title .proj:hover{background:#ffffff1c}
+.title .search{order:3;flex:0 1 380px;padding:7px 14px;font-size:13px;border-radius:10px}
+.title .lights{order:4;gap:8px;margin-left:auto}
+.title .me{order:5;font-size:13px;gap:8px}
+.title .ov{order:2}
+.title .me .btn,.title .me button,.title .ov{font-size:12.5px;padding:5px 11px;border-radius:8px;background:#ffffff12;color:#e6f5f0;border:1px solid #ffffff24;cursor:pointer}
+.title .me .btn:hover,.title .me button:hover,.title .ov:hover{background:#ffffff22}
+.conn,.sync{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;padding:5px 11px;border-radius:999px;background:#ffffff10;border:1px solid #ffffff1c;color:#d6eee7;cursor:pointer;white-space:nowrap}
+.conn i{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 3px #34d39933}
+.conn.warn i,.sync.warn:before{background:#fbbf24;box-shadow:0 0 0 3px #fbbf2433}
+.conn.bad i{background:#f87171;box-shadow:0 0 0 3px #f8717133;animation:lab-status-halo 1.6s infinite}
+.conn.upd i{background:#60a5fa;animation:lab-status-halo 1.2s infinite}
+.conn.warn,.conn.bad{color:#fde68a}
+.sync:before{content:"";width:7px;height:7px;border-radius:50%;background:#34d399}
+.sync.bad{color:#fecaca}.sync.bad:before{background:#f87171}
+
+/* 左侧导航：图标 + 文字 */
+.act{padding:10px 0;gap:2px;background:#0a2423}
+.act button{width:58px;height:54px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#8fb5ab}
+.act button svg{width:20px;height:20px}
+.act button .lb{font-size:11px;line-height:1;letter-spacing:.02em}
+.act button.on{background:#ffffff18;color:#fff}
+.act button.on:before{left:-5px;top:12px;bottom:12px}
+.act button .n{right:6px;top:4px}
+.act button[data-tip]:hover:after{display:none}
+
+/* 侧栏：任务名两行显示，不再被截成“工作台、项目…” */
+.side{background:#f8fbfa}
+.side h4{padding:16px 16px 8px;font-size:12px;letter-spacing:.06em;color:var(--mut)}
+.side h4 span{font-weight:600;letter-spacing:0}
+.tree{padding:0 8px 12px}
+.node{padding:7px 10px;font-size:13.5px;border-radius:9px}
+.node.tk{display:grid;grid-template-columns:22px 1fr;column-gap:9px;row-gap:1px;align-items:start;white-space:normal}
+.node.tk .av{grid-row:1/3;margin-top:1px}
+.node.tk .side-task-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45;color:var(--ink)}
+.node.tk .c{margin:0;font-size:11.5px;color:var(--mut-2)}
+
+/* 主区：更宽松、更易读 */
+.view{padding:26px 32px 40px;max-width:1280px}
+.vh{margin-bottom:18px;align-items:flex-end}
+.vh h1{font-size:24px;font-weight:700}
+.lede{color:var(--mut);font-size:14px}
+.card{border-radius:14px;border-color:var(--line);box-shadow:0 1px 2px #0b2a2b0a}
+.card h3{font-size:15.5px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.card h3 small{font-weight:500;color:var(--mut);font-size:12.5px}
+.btn{font-size:13.5px;padding:7px 14px;border-radius:9px}
+.btn.pri{background:#136354;border-color:#136354}
+.btn.pri:hover{background:#0e4d42}
+.btn.sm{padding:4px 10px;font-size:12.5px}
+
+/* 状态栏：只保留有用信息 */
+.status{font-size:12px;gap:18px;padding:0 16px;align-items:center}
+.status .kbd{cursor:pointer;opacity:.75}.status .kbd:hover{opacity:1}
+
+/* 更新卡片 */
+.upd .upd-state{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:12px;margin:6px 0 14px;background:#f1f7f4;border:1px solid var(--line)}
+.upd .upd-state.new{background:#ecf6ff;border-color:#bfdcf8}
+.upd .upd-state b{font-size:15px}.upd .upd-state span,.upd .upd-state small{color:var(--mut);font-size:13px}
+.upd .upd-state .btn{align-self:flex-start;margin-top:4px}
+.upd .row{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+.upd .chk{display:flex;gap:8px;align-items:center;margin:10px 0;font-size:14px;cursor:pointer}
+.upd .lbl{display:block;margin:10px 0;font-size:13px;font-weight:600}
+.upd textarea,.upd input:not([type]),.upd input[type=text]{width:100%;box-sizing:border-box;margin-top:5px;font:inherit;font-size:13.5px;padding:8px 10px;border:1px solid #bfd0cb;border-radius:8px;background:var(--card);color:var(--ink);resize:vertical}
+.upd details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.upd summary,.adv summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--ink-2)}
+.upd-pub summary{color:#136354}
+.muted{color:var(--mut);font-size:13px}
+.ok-line{color:#047857;font-size:13.5px}.err-line{color:#b91c1c;font-size:13.5px}.warn-line{color:#92400e;font-size:13.5px}
+.adv{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+
+/* 更新 / 重连提示 */
+#hxNote{position:fixed;left:50%;bottom:44px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:2000;background:#0c2b2a;color:#e6f5f0;padding:10px 18px;border-radius:12px;font-size:13.5px;box-shadow:0 12px 40px #0004;transition:.25s}
+#hxNote.on{opacity:1;transform:translate(-50%,0)}
+
+/* 夜间主题适配 */
+[data-theme=night] .side{background:var(--bg-2)}
+[data-theme=night] .upd .upd-state{background:#0b2628}
+[data-theme=night] .upd .upd-state.new{background:#0d2a3a;border-color:#1e4a66}
+
+@media (max-width:1100px){.title .search{display:none}.view{padding:20px}}
+.title .proj .chev{display:inline-block;width:6px;height:6px;margin:0 2px 3px 9px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg);opacity:.7}
+.node.tk .side-task-name{white-space:normal;text-overflow:clip;word-break:break-all}
+a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+.file-list{display:grid;gap:10px}
+.file-card{padding:16px 18px}
+.file-card h3{margin:8px 0 4px;font-size:15px;word-break:break-all}
+.file-card p{margin:4px 0}
+.row-more{display:flex;justify-content:center;margin:16px 0}

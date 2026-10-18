@@ -1,0 +1,62 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Helix Harness 3.2.0</title><meta name="theme-color" content="#0b2a2b"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg">
+
+<link rel="stylesheet" href="css/tokens.css?v=3110"><link rel="stylesheet" href="css/shell.css?v=3110"><link rel="stylesheet" href="css/clarity.css?v=3110"><link rel="stylesheet" href="css/agents.css?v=3110"><link rel="stylesheet" href="css/theme.css?v=3110"><link rel="stylesheet" href="css/simple.css?v=3110"><link rel="stylesheet" href="css/local-team.css?v=3110"><link rel="stylesheet" href="css/polish.css?v=3110"><script src="js/boot.js?v=3110"></script></head>
+
+<body><div class="shell">
+
+  <header class="title"><span class="logo"></span><div><b>Helix</b></div><span class="proj" data-cmd="hx-projects" title="切换项目 / 新建项目"></span><span class="me"></span>
+
+    <div class="search"><span>搜索任务、条目、命令…</span><kbd>Ctrl K</kbd></div><div class="lights"></div></header>
+
+  <nav class="act"></nav><aside class="side"></aside><main class="main"></main><aside class="insp"></aside>
+
+  <section class="dock"><nav></nav><div class="log"></div></section><footer class="status"></footer>
+
+</div>
+
+<div class="palette"><div class="box"><input placeholder="输入命令或搜索…（↑↓ 选择，Enter 执行，Esc 关闭）"><div class="list"></div></div></div>
+
+<script>
+
+/* 启动自检：脚本出错或 8 秒还没启动时，在页面上显示原因，并写到 data\client.log 便于排查 */
+
+(function () {
+
+  var sent = 0;
+
+  function report(kind, msg, extra) {
+
+    if (window.__helixBooted && kind === "timeout") return;
+
+    var box = document.getElementById("bootErr");
+
+    if (!box) { box = document.createElement("div"); box.id = "bootErr"; box.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:999;background:#fff1f2;color:#7f1d1d;border:1px solid #fecaca;border-radius:12px;padding:12px 16px;font:13px/1.6 'Microsoft YaHei',sans-serif;white-space:pre-wrap;max-height:40vh;overflow:auto"; (document.body || document.documentElement).appendChild(box); }
+
+    box.textContent = "Helix 界面启动出错（已记录到 data\\client.log）。可以截图发给助手：\n" + kind + "：" + msg + (extra ? "\n" + extra : "");
+
+    if (sent++ > 5) return;
+
+    var res = [];
+
+    try { res = performance.getEntriesByType("resource").filter(function (r) { return /\.(js|css)/.test(r.name); }).map(function (r) { return r.name.replace(location.origin, "") + " " + Math.round(r.duration) + "ms " + (r.transferSize === 0 ? "cache" : r.transferSize + "B"); }); } catch (e) {}
+
+    try { fetch("/api/client-log", { method: "POST", headers: { "Content-Type": "application/json", "X-Helix": "1" }, body: JSON.stringify({ kind: kind, msg: String(msg), extra: extra || "", ua: navigator.userAgent, url: location.href, resources: res }) }); } catch (e) {}
+
+  }
+
+  window.addEventListener("error", function (e) { report("error", e.message || (e.target && (e.target.src || e.target.href)) || "资源加载失败", (e.filename || "") + ":" + (e.lineno || "") + ":" + (e.colno || "") + (e.error && e.error.stack ? "\n" + e.error.stack : "")); }, true);
+
+  window.addEventListener("unhandledrejection", function (e) { report("promise", (e.reason && (e.reason.stack || e.reason.message)) || String(e.reason)); });
+
+  setTimeout(function () { report("timeout", "8 秒内界面没有启动（main.js 未执行完）"); }, 8000);
+
+  window.__helixReport = report;
+
+})();
+
+</script>
+
+<script type="module" src="js/main.js?v=3110"></script></body></html>
+

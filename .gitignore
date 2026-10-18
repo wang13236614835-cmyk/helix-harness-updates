@@ -1,0 +1,11 @@
+runtime/
+shell/data/
+shell/helix.config.json
+desktop/versions/
+Helix.exe
+Uninstall.exe
+__pycache__/
+*.pyc
+*.log
+*.dpapi
+.env

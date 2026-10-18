@@ -1,0 +1,20 @@
+/* 设计令牌：沿用 1.00 / 2.00 配色与动效曲线。替换主题只改这里。 */
+:root{
+  --ai:#10b981;--ai-soft:#34d399;--hu:#f59e0b;--hu-soft:#fcd34d;--task:#38bdf8;--revise:#a78bfa;--bad:#f87171;--dispute:#fb923c;--muted-strand:#64748b;
+  --deep:#0b2a2b;--deep-2:#05181c;--deep-3:#12302c;--ink:#173f3b;--ink-2:#315e57;--mut:#607570;--mut-2:#7b8d88;
+  --line:#d9e6e2;--line-2:#cfe0dc;--bg:#f1f7f4;--bg-2:#fbfdfb;--card:#ffffff;--focus:#2a7568;
+  --r-s:8px;--r:14px;--r-l:20px;--sh:0 10px 30px #2a675314;--sh-l:0 18px 50px #0b1f1c26;
+  --ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.2,1.35,.35,1);
+  --f:"Inter","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;--mono:ui-monospace,"Cascadia Code",Consolas,monospace;
+}
+[data-theme=night]{--bg:#081d21;--bg-2:#0b2628;--card:#0e2c2d;--ink:#e6f5f0;--ink-2:#bfe3d9;--mut:#8fb3aa;--mut-2:#6f948b;--line:#1d4642;--line-2:#245250;--sh:0 10px 30px #0006}
+@keyframes lab-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes lab-spring-arrive{0%{opacity:0;transform:translateY(10px) scale(.987)}65%{opacity:1;transform:translateY(-2px) scale(1.003)}100%{opacity:1;transform:none}}
+@keyframes lab-current-breathe{0%,100%{box-shadow:0 0 0 0 #398c6e00}50%{box-shadow:0 0 0 4px #398c6e22}}
+@keyframes lab-card-glint{from{transform:translateX(-160%) skewX(-18deg);opacity:0}30%{opacity:.7}to{transform:translateX(430%) skewX(-18deg);opacity:0}}
+@keyframes dual-knot-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+@keyframes lab-status-halo{0%,100%{box-shadow:0 0 0 0 #4c9e8000}50%{box-shadow:0 0 0 4px #4c9e8030}}
+@keyframes hx-spin{to{transform:rotate(360deg)}}
+@keyframes flow{to{stroke-dashoffset:-34}}
+[data-motion=off] *{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
