@@ -1,0 +1,3 @@
+FROM helix-harness:3.0
+COPY shell/server /app/shell/server
+COPY shell/app /app/shell/app

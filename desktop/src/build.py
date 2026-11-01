@@ -12,6 +12,6 @@ for name in ['Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.
 shutil.copy2(sdk/'runtimes/win-x64/native/WebView2Loader.dll',dest/'WebView2Loader.dll')
 common=[r'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe','/nologo','/target:winexe','/platform:x64','/optimize+','/win32icon:'+str(root/'shell/app/icon.ico'),'/win32manifest:'+str(src/'app.manifest'),*[f'/reference:{x}.dll' for x in ['System.Windows.Forms','System.Drawing','System.Web.Extensions','System.Security']]]
 subprocess.run([*common,'/out:'+str(root/'Helix.exe'),str(src/'Bootstrap.cs')],check=True)
-subprocess.run([*common,*['/reference:'+str(dest/n) for n in ['Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll']],'/out:'+str(dest/'Helix.Desktop.exe'),str(src/'Desktop.cs')],check=True)
+subprocess.run([*common,*['/reference:'+str(dest/n) for n in ['Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll']],'/out:'+str(dest/'Helix.Desktop.exe'),str(src/'Desktop.cs'),str(src/'HelixSplash.cs')],check=True)
 (root/'desktop/current.json').write_text(json.dumps({'version':version,'build':build,'entry':dest.relative_to(root).as_posix()+'/Helix.Desktop.exe'},indent=2),encoding='utf-8')
 print('Helix.exe and native application built successfully.')

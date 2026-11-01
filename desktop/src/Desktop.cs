@@ -43,7 +43,7 @@ class DesktopForm:Form {
     readonly EventWaitHandle signal,stopSignal;
     readonly JavaScriptSerializer json=new JavaScriptSerializer();
     readonly WebView2 view=new WebView2();
-    readonly Label loading=new Label();
+    readonly HelixSplash loading=new HelixSplash();
     readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer();
     CoreWebView2Environment webEnvironment;
     string origin="", instanceId="", currentVersion="3.2.0", updateEntry="";
@@ -57,7 +57,8 @@ class DesktopForm:Form {
         BackColor=Color.FromArgb(246,249,249); Font=new Font("Microsoft YaHei UI",10);
         try { Icon=Icon.ExtractAssociatedIcon(Path.Combine(root,"Helix.exe")); } catch {}
         RestoreWindow();
-        loading.Text="Helix 工作台\r\n正在启动，请稍候…"; loading.Dock=DockStyle.Fill; loading.TextAlign=ContentAlignment.MiddleCenter; loading.Font=new Font("Microsoft YaHei UI",18);
+        loading.Text="正在打开工作台…"; loading.Dock=DockStyle.Fill;
+        loading.Finished+=delegate { loading.Visible=false; view.Visible=true; view.BringToFront(); };
         view.Dock=DockStyle.Fill; view.DefaultBackgroundColor=BackColor; view.Visible=false;
         Controls.Add(view); Controls.Add(loading);
         Shown+=async delegate { await OpenWorkbench(); };
@@ -133,8 +134,10 @@ class DesktopForm:Form {
     }
     async Task OpenWorkbench() {
         try {
+            loading.Text="正在连接本机项目…";
             origin=await StartBackend();
             if(closing) return;
+            loading.Text="正在准备工作台界面…";
             webEnvironment=await CoreWebView2Environment.CreateAsync(null,StateFile("webview2"));
             await view.EnsureCoreWebView2Async(webEnvironment);
             view.CoreWebView2.Settings.AreDevToolsEnabled=false;
@@ -154,7 +157,7 @@ class DesktopForm:Form {
             view.CoreWebView2.NavigationStarting+=(s,e)=> { if(!IsLocal(e.Uri)&&e.Uri!="about:blank") { e.Cancel=true; OpenExternal(e.Uri); } };
             view.CoreWebView2.NewWindowRequested+=(s,e)=> { e.Handled=true; if(IsLocal(e.Uri)) OpenDocument(e.Uri); else OpenExternal(e.Uri); };
             view.CoreWebView2.ProcessFailed+=(s,e)=> { Log("webview process failed "+e.ProcessFailedKind); loading.Text="页面暂时停止响应，请关闭后重新打开 Helix。"; loading.Visible=true; loading.BringToFront(); };
-            view.CoreWebView2.NavigationCompleted+=(s,e)=> { if(e.IsSuccess) { loading.Visible=false; view.Visible=true; view.BringToFront(); } else { loading.Text="工作台正在重新连接…"; loading.Visible=true; loading.BringToFront(); } };
+            view.CoreWebView2.NavigationCompleted+=(s,e)=> { if(e.IsSuccess) { loading.Text="工作台已就绪"; loading.Complete(); } else { loading.Text="工作台正在重新连接…"; loading.Visible=true; loading.BringToFront(); } };
             view.CoreWebView2.SourceChanged+=(s,e)=>SaveWindow();
             var saved=ReadJson(StateFile("window.json")); string route=saved.ContainsKey("route")?Convert.ToString(saved["route"]):"/";
             if(!route.StartsWith("/")||route.StartsWith("//")) route="/";

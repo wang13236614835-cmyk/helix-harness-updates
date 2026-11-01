@@ -1,0 +1,90 @@
+/* Helix 3.3 双螺旋接力：琥珀链=真人(主核)，绿链=AI/搭档。只用 theme.css 的语义令牌，日夜间自动适配。 */
+.rl-wrap{container-type:inline-size}
+.rl-top{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:stretch}
+@container (max-width:860px){.rl-top{grid-template-columns:1fr}.rl-top .stage{min-height:200px}}
+.rl-top .stage{height:auto;min-height:290px}
+.rl-hero{position:relative;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:18px 20px 18px 24px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.rl-hero:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--hu),var(--ai))}
+.rl-hero[data-kind=wait]:before{background:var(--idle-dot)}
+.rl-hero[data-kind=done]:before{background:var(--ai)}
+.rl-eyebrow{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--warn-fg)}
+.rl-hero[data-kind=wait] .rl-eyebrow{color:var(--mut)}.rl-hero[data-kind=done] .rl-eyebrow{color:var(--ok-fg)}
+.rl-title{margin:0;font-size:19px;line-height:1.35;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.rl-sub{margin:0;font-size:13.5px;color:var(--mut)}
+.rl-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.rl-more{margin:auto 0 0;padding-top:8px;font-size:12.5px;color:var(--mut)}
+.rl-more .link{font-size:12.5px}
+/* 接力管线 */
+.rl-track{margin-top:16px;padding:14px 16px 12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh)}
+.rl-line{display:flex;align-items:center;gap:0;flex-wrap:wrap}
+.rl-node{display:flex;flex-direction:column;align-items:center;gap:1px;flex:1 1 0;min-width:92px;padding:8px 14px;border:1px solid transparent;border-radius:12px;background:none;color:var(--ink);cursor:pointer;font:inherit}
+.rl-node b{font-size:26px;line-height:1.1;font-weight:700}
+.rl-node span{font-size:12.5px;color:var(--mut)}
+.rl-node:hover{background:var(--hover)}
+.rl-node.on{background:var(--sel);border-color:var(--focus)}
+.rl-node:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.rl-node.st-primary b,.rl-node.st-cross b{color:var(--warn-fg)}.rl-node.st-passed b{color:var(--ok-fg)}.rl-node.st-disputed b,.rl-node.st-failed b{color:var(--bad-fg)}
+.rl-node b:is(:first-child){font-variant-numeric:tabular-nums}
+.rl-link{width:44px;height:20px;flex:none;overflow:visible}
+.rl-link path{fill:none;stroke-width:2;stroke-linecap:round}
+.rl-link .h{stroke:var(--hu)}.rl-link .a{stroke:var(--ai)}
+.rl-side{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.rl-side .rl-node{flex:none;flex-direction:row;gap:6px;min-width:0;padding:3px 10px;border-radius:99px;border-color:var(--line)}
+.rl-side .rl-node b{font-size:14px}.rl-side .rl-node span{font-size:12.5px}
+.rl-prog{height:5px;margin-top:10px;border-radius:99px;background:var(--track);overflow:hidden}
+.rl-prog i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--hu),var(--ai));transition:width .4s var(--ease)}
+/* 队列 */
+.rl-queue>header{flex-wrap:wrap}
+.rl-list{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.rl-row{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(120px,170px) auto;gap:14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;border-left:3px solid transparent}
+.rl-row:last-child{border-bottom:0}
+.rl-row:hover{background:var(--hover)}.rl-row.on{background:var(--sel);border-left-color:var(--ai)}
+.rl-row.me{border-left-color:var(--hu)}
+.rl-row:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.rl-pair{display:flex}.rl-pair .av{width:28px;height:28px;font-size:12px;border:2px solid var(--card)}.rl-pair .av+.av{margin-left:-9px}
+.rl-main{min-width:0}
+.rl-t{display:flex;gap:10px;align-items:baseline}.rl-t b{flex:none;font-size:13.5px}
+.rl-t span{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rl-who{margin-top:2px;font-size:12.5px;color:var(--mut)}
+.rl-who em,.rl-people em{font-style:normal;margin-left:8px;color:var(--warn-fg);background:var(--warn-bg);border-radius:6px;padding:0 6px}
+.rl-state{display:flex;flex-direction:column;gap:3px;align-items:flex-start}.rl-state small{font-size:12px;color:var(--mut)}
+.rl-end{display:flex;align-items:center;gap:10px;justify-content:flex-end;font-size:12.5px;color:var(--mut);white-space:nowrap}
+.rl-ck{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:12.5px}
+.rl-done{margin-top:12px}.rl-done>summary{cursor:pointer;color:var(--mut);font-size:13px;margin-bottom:8px}
+.rl-fold{margin-top:22px}.rl-fold>summary{display:flex;align-items:baseline;gap:12px;cursor:pointer;margin-bottom:10px}
+.rl-fold>summary h2{display:inline;margin:0;font-size:17px}.rl-fold>summary span{color:var(--mut);font-size:13px}
+@container (max-width:760px){.rl-row{grid-template-columns:auto minmax(0,1fr) auto}.rl-state{display:none}}
+/* 任务卡 */
+.rl-cards{display:grid;gap:12px;margin:14px 0 24px}
+.rl-card{position:relative;padding:14px 18px 14px 20px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);border-left:4px solid var(--line-2)}
+.rl-card.st-primary,.rl-card.st-cross{border-left-color:var(--hu)}.rl-card.st-passed{border-left-color:var(--ai)}.rl-card.st-disputed,.rl-card.st-failed{border-left-color:var(--bad)}
+.rl-card header{display:flex;align-items:center;gap:10px}
+.rl-card h3{flex:1;min-width:0;margin:0;font-size:15.5px;line-height:1.35}
+.rl-due{font-size:12.5px;color:var(--mut);white-space:nowrap}
+.rl-people{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--ink-2)}
+.rl-people .sp{flex:1}.rl-people small{color:var(--mut)}
+.rl-hold{margin:6px 0 0;font-size:13px;color:var(--mut)}
+.rl-card .rl-acts{margin-top:10px}
+.rl-req{margin-top:10px;font-size:13px}.rl-req>summary{cursor:pointer;color:var(--mut)}.rl-req h4{margin:10px 0 2px;font-size:13px}.rl-req p{margin:0 0 4px}
+.rl-steps{display:flex;list-style:none;margin:10px 0 0;padding:0;gap:0}
+.rl-steps li{position:relative;flex:1;max-width:120px;padding-top:12px;font-size:12px;text-align:center;color:var(--mut-2)}
+.rl-steps li:before{content:"";position:absolute;left:0;right:0;top:3px;height:3px;background:var(--track)}
+.rl-steps li:after{content:"";position:absolute;left:50%;top:-1px;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;background:var(--card);border:2px solid var(--track)}
+.rl-steps li.done:before{background:var(--ai)}.rl-steps li.done:after{background:var(--ai);border-color:var(--ai)}
+.rl-steps li.cur{color:var(--ink);font-weight:700}.rl-steps li.cur:after{border-color:var(--hu);background:var(--hu-soft)}
+.rl-steps.bad li.cur:after{border-color:var(--bad);background:var(--bad-bg)}
+.rl-steps li:first-child:before{left:50%}.rl-steps li:last-child:before{right:50%}
+/* 结果区 */
+.rl-res{display:flex;flex-direction:column;gap:5px;margin-top:10px;padding:9px 12px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;font-size:13px}
+.rl-res b{margin-right:4px;color:var(--ink-2)}.rl-res em{font-style:normal;margin-left:8px;color:var(--mut)}
+.rl-files{display:flex;flex-wrap:wrap;gap:6px}
+.rl-insp{margin:8px 0 12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px}
+.rl-insp .rl-steps{margin-top:0}.rl-insp .rl-res{background:var(--card)}
+/* 周报弹窗 */
+.hxm-box.rl-rep{width:min(680px,94vw)}
+.rl-rep textarea{width:100%;box-sizing:border-box;font:12.5px/1.6 var(--mono);padding:10px 12px;border:1px solid var(--line-2);border-radius:var(--r-s);background:var(--bg-2);color:var(--ink);resize:vertical}
+.rl-rep .row-end{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+/* 侧栏任务：阶段标签 */
+.node.tk .c.rl-c{font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--neu-bg);color:var(--neu-fg)}
+.node.tk .c.rl-c.warn{background:var(--warn-bg);color:var(--warn-fg)}.node.tk .c.rl-c.ok{background:var(--ok-bg);color:var(--ok-fg)}.node.tk .c.rl-c.bad{background:var(--bad-bg);color:var(--bad-fg)}
+.node.tk.rl-turn{box-shadow:inset 3px 0 0 var(--hu)}

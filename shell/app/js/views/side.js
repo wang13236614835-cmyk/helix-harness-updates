@@ -1,4 +1,8 @@
-import { esc, av, members, workload } from "./common.js?v=3110";
+import { esc, av, members, workload } from "./common.js?v=3301";
+
+import { store } from "../core/store.js?v=3301";
+
+import { flows, STAGE, isMineTurn } from "../relay.js?v=3301";
 
 export function side(s, ui) {
 
@@ -6,7 +10,7 @@ export function side(s, ui) {
 
   const sp = s.sprint || {}, items = s.items || [];
 
-  const wk = (sp.pairs || []).map((t) => `<div class="node tk ${ui.sel === "task:" + t.task_id ? "on" : ""}" data-sel="task:${esc(t.task_id)}">${av(s, t.owner)}<span class="side-task-name" title="${esc(t.deliverable||t.task_id)}">${esc(t.deliverable||t.task_id)}</span><span class="c">${t.disputed ? "有分歧" : t.open ? "待负责人处理" : (t.bases && t.crossed < t.bases) ? "待复核" : t.crossed ? "已完成" : "未开始"}</span></div>`).join("");
+  const wk = flows(s, store.prefs, "week").map((f) => { const t = f.t, st = STAGE[f.stage], turn = isMineTurn(f); return `<div class="node tk ${ui.sel === "task:" + f.id ? "on" : ""} ${turn ? "rl-turn" : ""}" data-sel="task:${esc(f.id)}">${av(s, t.owner)}<span class="side-task-name" title="${esc(t.deliverable||f.id)}">${esc(t.deliverable||f.id)}</span><span class="c rl-c ${turn ? "warn" : st.tone}">${turn ? "轮到你" : st.short}</span></div>`; }).join("");
 
   const cur = (sp.weeks || []).find((w) => w.week === sp.current_week) || {};
 

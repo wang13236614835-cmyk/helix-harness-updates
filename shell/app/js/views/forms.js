@@ -1,10 +1,11 @@
-import { fileName, fileKind, fileKindLabel } from "../presentation.js?v=3110";
-import { store } from "../core/store.js?v=3110";
+import { uploadCapabilities } from "../uploads.js?v=3301";
+import { fileName, fileKind, fileKindLabel } from "../presentation.js?v=3301";
+import { store } from "../core/store.js?v=3301";
 // 0.4：真人写入表单（主核配对、交叉核）与“数据与文件”页。表单值存在 draft 里，实时刷新不会丢输入。
 
-import { esc, short, av, members, fmtTs, canon, decLabel } from "./common.js?v=3110";
+import { esc, short, av, members, fmtTs, canon, decLabel } from "./common.js?v=3301";
 
-import { signer, canSign } from "./auth.js?v=3110";
+import { signer, canSign } from "./auth.js?v=3301";
 
 export const draft = {};
 
@@ -91,9 +92,9 @@ export function writeBlock(s, b, me) {
 
 
 export function dataView(s,ui,prefs){
- const all=s.files||[],q=String(ui.fileQuery||'').trim().toLowerCase(),kind=ui.fileKind||'all',admin=s.auth?.me?.role==='lead';
+ const all=s.files||[],q=String(ui.fileQuery||'').trim().toLowerCase(),kind=ui.fileKind||'all',can=uploadCapabilities(s);
  const files=all.filter(f=>(kind==='all'||fileKind(f)===kind)&&(!q||(fileName(f.name)+' '+f.name+' '+(f.note||'')).toLowerCase().includes(q)));
- return `<div class="vh"><div><h1>项目文件</h1><p class="lede">查看项目资料，上传自己的成果和操作日志。</p></div><span class="sp"></span><button class="btn pri" data-cmd="hx-upload">上传文件</button></div><div class="file-toolbar"><input id="file-search" value="${esc(ui.fileQuery||'')}" placeholder="搜索中文名称或原文件名" aria-label="搜索文件"><button class="btn" data-cmd="files-search">搜索</button></div><div class="task-tabs">${[['all','全部文件'],['plan','计划与任务'],['evidence','科研依据'],['work','操作成果与资料']].map(([id,label])=>`<button class="btn ${kind===id?'pri':''}" data-cmd="files-kind:${id}">${label}</button>`).join('')}<span class="sub">${files.length} 个文件</span></div><div class="drop" data-cmd="hx-upload"><b>拖入文件，或点击上传</b><span>支持表格、文档、PDF、图片和工具日志，单个不超过 64 MB。</span></div><div class="file-list">${files.slice().reverse().slice(0,ui.fileLimit||60).map(f=>`<article class="card file-card"><div><span class="pill">${esc(fileKindLabel(f))}</span><h3>${esc(fileName(f.name))}</h3>${f.note?`<p>${esc(f.note)}</p>`:''}<p class="sub">${f.bytes>1048576?(f.bytes/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.bytes/1024))+' KB'}${f.added_by?' · 上传人：'+esc(f.added_by):''}${f.added_at?' · '+fmtTs(f.added_at):''}</p><details><summary>原文件信息</summary><p>原文件名：${esc(f.name)}</p><p class="mono">文件校验码：${esc(f.sha256)}</p></details></div><div class="file-actions"><button class="btn pri" data-cmd="file-view:${esc(f.sha256)}">打开文件</button><a class="btn" href="/api/file?sha=${esc(f.sha256)}">下载</a></div></article>`).join('')||'<div class="card empty">没有找到文件。可调整筛选条件，或上传一份成果。</div>'}</div>${files.length>(ui.fileLimit||60)?`<div class="row-more"><button class="btn" data-cmd="files-more">显示更多（还有 ${files.length-(ui.fileLimit||60)} 个）</button></div>`:''}`;
+ return `<div class="vh"><div><h1>项目文件</h1><p class="lede">查看项目资料，上传自己的成果和操作日志。</p></div><span class="sp"></span><button class="btn pri" data-cmd="hx-upload">上传文件</button>${can.register?`<button class="btn" data-cmd="hx-register" title="不复制文件，只登记路径和校验码，适合超过 64 MB 的大文件">登记本机大文件</button>`:''}</div><div class="file-toolbar"><input id="file-search" value="${esc(ui.fileQuery||'')}" placeholder="搜索中文名称或原文件名" aria-label="搜索文件"><button class="btn" data-cmd="files-search">搜索</button></div><div class="task-tabs">${[['all','全部文件'],['plan','计划与任务'],['evidence','科研依据'],['work','操作成果与资料']].map(([id,label])=>`<button class="btn ${kind===id?'pri':''}" data-cmd="files-kind:${id}">${label}</button>`).join('')}<span class="sub">${files.length} 个文件</span></div><div class="drop" data-cmd="hx-upload"><b>拖入文件，或点击上传</b><span>支持表格、文档、PDF、图片和工具日志，单个不超过 64 MB。${can.register?'更大的文件请用「登记本机大文件」。':'超过上限请拆分文件后上传；当前服务或账号不支持本机登记。'}${can.sha256?'上传前计算本机校验码，由服务器核对，不一致会拒收。':'支持时计算本机校验码；是否经服务器核验以上传结果为准。'}</span></div><div class="file-list">${files.slice().reverse().slice(0,ui.fileLimit||60).map(f=>`<article class="card file-card"><div><span class="pill">${esc(fileKindLabel(f))}</span>${f.placement==='in_place'?`<span class="pill">本机原地</span>`:''}${f.available===false?`<span class="pill warn" title="文件已被移动、改名或修改，Helix 不会提供它">文件已移动或被修改</span>`:''}<h3>${esc(fileName(f.name))}</h3>${f.note?`<p>${esc(f.note)}</p>`:''}<p class="sub">${f.bytes>1048576?(f.bytes/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.bytes/1024))+' KB'}${f.added_by?' · 上传人：'+esc(f.added_by):''}${f.added_at?' · '+fmtTs(f.added_at):''}</p><details><summary>原文件信息</summary><p>原文件名：${esc(f.name)}</p><p class="mono">文件校验码：${esc(f.sha256)}</p>${f.external_path?`<p class="mono">本机路径：${esc(f.external_path)}</p>`:''}</details></div><div class="file-actions">${f.available===false?`<button class="btn" disabled title="登记的本机文件已被移动或修改，Helix 不会提供它；请恢复原文件或重新登记">文件不可用</button>`:`<button class="btn pri" data-cmd="file-view:${esc(f.sha256)}">打开文件</button><a class="btn" href="/api/file?sha=${esc(f.sha256)}">下载</a>`}</div></article>`).join('')||'<div class="card empty">没有找到文件。可调整筛选条件，或上传一份成果。</div>'}</div>${files.length>(ui.fileLimit||60)?`<div class="row-more"><button class="btn" data-cmd="files-more">显示更多（还有 ${files.length-(ui.fileLimit||60)} 个）</button></div>`:''}`;
 }
 
 document.addEventListener('input',e=>{if(e.target.id==='file-search')storeFileQuery(e.target.value);});

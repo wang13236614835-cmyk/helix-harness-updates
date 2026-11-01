@@ -1,0 +1,9 @@
+**/__pycache__
+**/*.pyc
+shell/data
+runtime
+research
+QA
+**/*.zip
+cloud/state
+cloud/image.tar.gz

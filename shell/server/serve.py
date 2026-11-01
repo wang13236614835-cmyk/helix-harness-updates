@@ -23,8 +23,12 @@ from urllib.parse import parse_qs, urlparse
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-APP_DIR = ROOT / "app"
-CONFIG = ROOT / "helix.config.json"
+# Isolated test instances redirect all state under HELIX_DATA_DIR instead of
+# touching the installed app's real data tree.
+if os.environ.get("HELIX_DATA_DIR"):
+    ROOT = Path(os.environ["HELIX_DATA_DIR"])
+APP_DIR = HERE.parent / "app"
+CONFIG = HERE.parent / "helix.config.json"
 sys.path.insert(0, str(HERE))
 import projects as P  # noqa: E402
 import local_team as LT
@@ -428,7 +432,7 @@ def build_raw() -> dict:
         "port": {"kind": "helix-shell-server", "detail": f"内核 {KERNEL.name if KERNEL else '-'} · 账本 {root or '未找到'}"},
         "project": {"id": pid, "kind": "local" if local else "builtin", "name": (local or {}).get("name") or _cfg().get("project_name") or v4.get("target") or pid, "v4_id": v4.get("project_id"),
                     "target": v4.get("target"), "question": v4.get("question"), "status": v4.get("discovery_status"),
-                    "claim_ceiling": v4.get("claim_ceiling"), "direction": v4.get("target_direction"), "updated_at": v4.get("updated_at")},
+                    "claim_ceiling": v4.get("claim_ceiling"), "direction": (local or {}).get("direction", v4.get("target_direction")), "updated_at": v4.get("updated_at")},
         "skeleton": {"gates": [{"id": k, **(v if isinstance(v, dict) else {"raw_status": v})} for k, v in (v4.get("gates") or {}).items()],
                      "human_nodes": v4.get("human_nodes") or {}, "freeze": v4.get("freeze") or {}, "validation": v4.get("validation") or {},
                      "tracks": v4.get("tracks") or {}, "candidates": len(v4.get("candidates") or []),
@@ -461,6 +465,7 @@ def build_snapshot(handler=None) -> dict:
         snap["gates"] = apply_map(gates_view(ctx), mapping)
         snap["agent_runs"] = apply_map(runtime(ctx.pid).view(), mapping)
         snap["team"] = apply_map(team_view(ctx, snap["sprint"].get("current_week")), mapping)
+    snap["research_progress"] = (P.load(_project_id()) or {}).get('research_progress') or {}
     snap["cloud"] = CLOUD.public()
     snap["auth"] = auth_view(handler)
     person=next((p for p in people if p['id']==(snap['auth'].get('me') or {}).get('id')),None)
@@ -633,6 +638,26 @@ class Ctx:
 
     def task(self, tid) -> dict | None:
         return next((t for t in self.tasks() if t.get("task_id") == tid), None)
+
+    def learning_context(self, task: dict) -> dict:
+        """Selected local lesson is study guidance, never research evidence."""
+        if os.environ.get("HELIX_CLOUD_MODE") == "1" or not P.is_local(self.pid):
+            return {}
+        project = P.load(self.pid) or {}
+        cfg = project.get("local_team") or {}
+        slot = task.get("workspace_slot")
+        week = task.get("week")
+        if not cfg.get("enabled") or not slot or not week or not any(s.get("id") == slot for s in cfg.get("seats", [])):
+            return {}
+        curriculum = LT.curriculum(P, self.pid)
+        lesson = next((item for item in curriculum.get("roles", {}).get(slot, [])
+                       if str(item.get("project_week")) == str(week)), None)
+        if not lesson:
+            return {}
+        links = set(lesson.get("learning_links") or [])
+        return {"lesson": lesson,
+                "resources": [item for item in curriculum.get("external_resources", []) if item.get("id") in links],
+                "usage": "这些学习资料不是科研证据；只能指导本周任务的学习与操作，不能编造已运行结果，科研结论必须依据真实输入、输出与独立复核。"}
 
     def files(self) -> list[dict]:
         return P.files(self.pid)
@@ -931,9 +956,39 @@ class H(SimpleHTTPRequestHandler):
         u = urlparse(self.path)
         if not self._gate(u.path):
             return
+        q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
             if u.path == '/api/version':
                 return self._json({'ok':True,'version':RELEASE_VERSION,'build':RELEASE_BUILD,'shell_version':VERSION,'started':STARTED_AT})
+            if os.environ.get('HELIX_CLOUD_MODE') == '1' and u.path == '/api/desktop/projects':
+                need_person(self)
+                import helix_sync
+                rows = []
+                for x in P.list_local():
+                    try:
+                        rows.append({'id': x['id'], 'name': x['name'], 'revision': helix_sync.revision(P, x['id'])})
+                    except Exception:
+                        continue
+                return self._json({'ok': True, 'projects': rows})
+            if os.environ.get('HELIX_CLOUD_MODE') == '1' and u.path == '/api/desktop/export':
+                need_admin(self)
+                import helix_sync
+                pid = P.safe_id(q.get('project', ''))
+                expected = str(q.get('revision') or '')
+                if not P.is_local(pid):
+                    return self._json({'ok': False, 'error': '项目不存在'}, 404)
+                if expected and helix_sync.revision(P, pid) != expected:
+                    return self._json({'ok': False, 'error': '云项目已变化，请刷新后重试'}, 409)
+                try:
+                    raw = helix_sync.snapshot(P, pid)
+                except helix_sync.SyncError as exc:
+                    return self._json({'ok': False, 'error': '这个项目较大，请在客户端使用后台分块下载。'}, 413)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/zip')
+                self.send_header('Content-Disposition', 'attachment; filename="helix-state.zip"')
+                self.send_header('Content-Length', str(len(raw)))
+                self.end_headers()
+                return self.wfile.write(raw)
             if u.path == '/api/projects/export':
                 need_admin(self)
                 raw=PI.export_project(P,_project_id(),lambda p:apply_map(p,display_map()))
@@ -1082,6 +1137,94 @@ class H(SimpleHTTPRequestHandler):
             return self._json({"ok": False, "auth": True, "error": "请先登录（登录已过期或尚未登录）"}, 401)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
+            metadata_cloud = os.environ.get('HELIX_CLOUD_MODE') == '1' and u.path in (
+                '/api/desktop-sync/metadata-preview', '/api/desktop-sync/metadata-apply')
+            metadata_local = os.environ.get('HELIX_CLOUD_MODE') != '1' and u.path in (
+                '/api/projects/metadata-preview', '/api/projects/metadata-apply')
+            if metadata_cloud or metadata_local:
+                import helix_sync_metadata
+                try:
+                    if metadata_local:
+                        host = self.headers.get('Host', '')
+                        expected_origin = 'http://' + host
+                        if host not in (f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}') or self.headers.get('Origin', expected_origin) != expected_origin:
+                            return self._json({'ok': False, 'error': 'Local origin mismatch'}, 403)
+                    person = need_admin(self)
+                    if not person or person.get('role') != 'lead':
+                        return self._json({'ok': False, 'error': 'Authenticated lead required'}, 403)
+                    n = int(self.headers.get('Content-Length') or 0)
+                    if self.headers.get('Transfer-Encoding') or not 0 < n <= helix_sync_metadata.MAX_REQUEST:
+                        return self._json({'ok': False, 'error': 'Metadata request must be at most 2MB'}, 413)
+                    body = self._body_json(helix_sync_metadata.MAX_REQUEST)
+                    operation = helix_sync_metadata.preview if u.path.endswith('metadata-preview') else helix_sync_metadata.apply
+                    with IDENT.store_lock:
+                        result = operation(P, body, owner=person['id'])
+                    return self._json({'ok': True, **result})
+                except ID.AuthError as exc:
+                    return self._json({'ok': False, 'error': str(exc)}, 403)
+                except helix_sync_metadata.MetadataError as exc:
+                    return self._json({'ok': False, 'error': str(exc)}, exc.status)
+            if os.environ.get('HELIX_CLOUD_MODE') == '1' and u.path.startswith('/api/desktop-transfer/'):
+                import helix_sync_transport
+                action = u.path.rsplit('/', 1)[-1]
+                # Continuing an upload authenticates with the 128-bit transfer token, not
+                # the login session: sessions live in memory and die on restart, while a
+                # multi-GB transfer must survive that. Starting a new one still needs an
+                # authenticated lead.
+                if action == 'begin':
+                    person = need_admin(self)
+                    result = helix_sync_transport.begin(P, person['id'], self._body_json(2000))
+                elif action == 'chunk':
+                    qtok = str(q.get('token') or '')
+                    offset = q.get('offset')
+                    if offset is None or not str(offset).isdigit():
+                        raise ValueError('传输偏移无效')
+                    length = int(self.headers.get('Content-Length') or 0)
+                    if length <= 0 or length > helix_sync_transport.CHUNK:
+                        raise ValueError('传输块大小无效')
+                    result = helix_sync_transport.chunk(P, None, qtok, int(offset), self.rfile.read(length))
+                elif action == 'status':
+                    result = helix_sync_transport.status(P, None, str(self._body_json(2000).get('token') or ''))
+                elif action == 'finish':
+                    result = helix_sync_transport.finish(P, None, str(self._body_json(2000).get('token') or ''))
+                else:
+                    raise ValueError('未知的传输操作')
+                return self._json({'ok': True, **result})
+            if os.environ.get('HELIX_CLOUD_MODE') == '1' and u.path.startswith('/api/desktop-sync/'):
+                person = need_admin(self)
+                import helix_sync
+                action = u.path.rsplit('/', 1)[-1]
+                if action == 'stage':
+                    n = int(self.headers.get('Content-Length') or 0)
+                    if n <= 0 or n > helix_sync.MAX_TOTAL:
+                        raise ValueError('状态包不能为空，且不得超过256MB')
+                    result = helix_sync.stage(self.rfile.read(n), person['id'], '云端同步')
+                elif action == 'apply':
+                    body = self._body_json(20000)
+                    # Ownership is enforced by the staged record itself (created by an
+                    # authenticated cloud member); apply always runs as that member.
+                    with IDENT.store_lock:
+                        result = helix_sync.apply(P, body.get('token'), str(body.get('expected_revision') or ''),
+                                                  str(body.get('target') or ''), owner=person['id'],
+                                                  create_only=bool(body.get('create_only')))
+                else:
+                    raise ValueError('未知的同步操作')
+                return self._json({'ok': True, **result})
+            if u.path.startswith('/api/helix-remote/'):
+                import helix_remote
+                try:
+                    action = u.path.rsplit('/', 1)[-1]
+                    limit = 2_000_000 if action in ('metadata-preview', 'metadata-apply') else 20000
+                    n = int(self.headers.get('Content-Length') or 0)
+                    if action in ('metadata-preview', 'metadata-apply') and (
+                            self.headers.get('Transfer-Encoding') or not 0 < n <= limit):
+                        return self._json({'ok': False, 'error': 'Metadata request must be at most 2MB'}, 413)
+                    result = helix_remote.handle(sys.modules[__name__], self, action, self._body_json(limit))
+                    return self._json({'ok': True, **result})
+                except PermissionError as exc:
+                    return self._json({'ok': False, 'error': str(exc)}, 403)
+                except helix_remote.RemoteError as exc:
+                    return self._json({'ok': False, 'error': str(exc)}, 409)
             if u.path.startswith('/api/project-import/'):
                 person=need_admin(self)
                 # need_admin verifies privileges; resolve the actual caller for preview ownership.

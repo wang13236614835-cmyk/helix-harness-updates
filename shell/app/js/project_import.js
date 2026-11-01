@@ -1,4 +1,4 @@
-import {store,esc} from './core/store.js?v=3110';
+import {store,esc} from './core/store.js?v=3301';
 let ctx;export function initProjectImport(c){ctx=c;}
 export function projectImportCmd(cmd){
  if(cmd==='project-export'){(async()=>{try{const r=await fetch('/api/projects/export',{headers:{'X-Helix-Token':sessionStorage.getItem('helix.token')||''}});if(!r.ok){const j=await r.json();throw Error(j.error||'导出失败');}const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download='Helix-Project-3.2.0.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);}catch(e){ctx.toast(e.message);}})();return true;}

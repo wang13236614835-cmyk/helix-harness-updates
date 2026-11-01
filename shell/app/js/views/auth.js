@@ -1,6 +1,6 @@
 // 0.5：登录状态与署名块（独立小模块，避免循环导入）
 
-import { esc, av } from "./common.js?v=3110";
+import { esc, av } from "./common.js?v=3301";
 
 export const token = () => sessionStorage.getItem("helix.token") || "";
 

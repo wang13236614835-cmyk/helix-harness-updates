@@ -4,11 +4,11 @@
 
 // 换数据 = 换端口；视图与动效不需要改。
 
-import { bus } from "../core/bus.js?v=3110";
+import { bus } from "../core/bus.js?v=3301";
 
 
 
-export const SHELL_VERSION = "helix-shell 3.2.0";
+export const SHELL_VERSION = "helix-shell 3.3.1";
 
 // P0：最后一次真实快照按项目存在本机；断线时只读显示它，绝不换成演示数据
 
@@ -62,7 +62,7 @@ if (typeof window !== "undefined" && window.fetch && !window.fetch.__helixGuard)
 
 }
 
-export const WRITE_CMD = /^(?:(?:hx-(?:pair|cross|seed|takeover|upload|switch|checkpoint|wizard|wizard-edit)|wz-(?:next|seed|files|import)|wl-new|person-(?:new|save|del|toggle|claim)|auth-(?:login|do-login|setpin|do-setpin))(?::|$)|ag-|md-|lt-|project-import)/;
+export const WRITE_CMD = /^(?:(?:hx-(?:pair|cross|seed|takeover|upload|register|switch|checkpoint|wizard|wizard-edit)|wz-(?:next|seed|files|import)|wl-new|person-(?:new|save|del|toggle|claim)|auth-(?:login|do-login|setpin|do-setpin))(?::|$)|ag-|md-|lt-|project-import)/;
 
 export function toLogin() { if (/^\/(login|leader-login|register)/.test(location.pathname)) return; location.replace("/login?next=" + encodeURIComponent(location.pathname + location.hash)); }
 async function getJSON(url) { const r = await fetch(url, { cache: "no-store", credentials: "same-origin", headers: { "X-Helix-Token": sessionStorage.getItem("helix.token") || "" } }); if (r.status === 401 && url.startsWith("/api/")) { toLogin(); throw new Error("登录已过期，请重新登录"); } if (!r.ok) throw new Error(`${url} → ${r.status}`); return r.json(); }

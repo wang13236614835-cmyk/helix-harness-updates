@@ -9,3 +9,14 @@ __pycache__/
 *.log
 *.dpapi
 .env
+
+# Local application state and generated artifacts
+shell/data/
+cloud/state/
+__pycache__/
+*.pyc
+runtime/
+research/
+shell/app/downloads/
+*.key
+*.pem

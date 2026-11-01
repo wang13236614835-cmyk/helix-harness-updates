@@ -1,8 +1,10 @@
-import { esc, short, av, statusPill, bondTag, fmtTs, crossState, personOf, workload, ROLE_LABEL, decLabel, evLabel, actorKind, portLabel, ceilLabel, dutyChip, dutyBoard, checkinOf, ckPill, ckBar, canCheckin, CK_STATE } from "./common.js?v=3110";
+import { esc, short, av, statusPill, bondTag, fmtTs, crossState, personOf, workload, ROLE_LABEL, decLabel, evLabel, actorKind, portLabel, ceilLabel, dutyChip, dutyBoard, checkinOf, ckPill, ckBar, canCheckin, CK_STATE } from "./common.js?v=3301";
 
-import { writeBlock } from "./forms.js?v=3110";
+import { writeBlock } from "./forms.js?v=3301";
 
-import { store } from "../core/store.js?v=3110";
+import { store } from "../core/store.js?v=3301";
+
+import { relayBlock } from "../relay.js?v=3301";
 
 const kv = (rows) => `<dl class="kv">${rows.filter((r) => r[1] !== undefined && r[1] !== null && r[1] !== "").map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
 
@@ -40,7 +42,7 @@ export function inspector(s, sel) {
 
     const t = (s.sprint?.pairs || []).find((x) => x.task_id === id) || {}; const bs = (s.items || []).filter((b) => b.task_id === id);
 
-    return `<div class="body"><p style="margin-top:0"><span class="tag tk">任务</span><b>${esc(id)}</b> · ${esc(t.track_label)}</p><p style="font-size:14px;font-weight:600">${esc(t.deliverable)}</p>
+    return `<div class="body"><p style="margin-top:0"><span class="tag tk">任务</span><b>${esc(id)}</b> · ${esc(t.track_label)}</p><p style="font-size:14px;font-weight:600">${esc(t.deliverable)}</p>${relayBlock(s, id)}
 
       ${kv([["职能", s.plan ? dutyChip(s, ((s.plan.tasks || []).find((x) => x.task_id === id) || {}).duty) : ""], ["主核", `${av(s, t.owner)} ${esc(t.owner)}`], ["交叉核", `${av(s, t.cross_reviewer)} ${esc(t.cross_reviewer)}`], ["截止", esc(t.end)], ["验收", esc(t.acceptance)], ["任务表状态", esc(t.status)]])}
 

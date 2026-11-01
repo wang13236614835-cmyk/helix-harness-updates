@@ -1,14 +1,16 @@
 // 0.5：登录（本机口令）、模型工坊（URL + Key 即用、按能力推荐）、运行页（DAG / Gate / 智能体执行与恢复）。
 
-import { store, esc, short } from "./core/store.js?v=3110";
+import { store, esc, short } from "./core/store.js?v=3301";
 
-import { fileName, taskOutput, taskStatus } from "./presentation.js?v=3110";
+import { fileName, taskOutput, taskStatus } from "./presentation.js?v=3301";
 
-import { views } from "./views/index.js?v=3110";
+import { views } from "./views/index.js?v=3301";
 
-import { draft } from "./views/forms.js?v=3110";
+import { draft } from "./views/forms.js?v=3301";
 
-import { av, fmtTs, roster, evTag, stepState, checkinOf, ckMain, CK_STATE } from "./views/common.js?v=3110";
+import { relayTasks } from "./relay.js?v=3301";
+
+import { av, fmtTs, roster, evTag, stepState, checkinOf, ckMain, CK_STATE } from "./views/common.js?v=3301";
 
 
 
@@ -16,7 +18,7 @@ let ctx = { toast: () => {}, go: () => {}, api: null, refresh: null };
 
 export function initAgents(c) { ctx = { ...ctx, ...c }; }
 
-import { token, me as me_ } from "./views/auth.js?v=3110";
+import { token, me as me_ } from "./views/auth.js?v=3301";
 
 export { token };
 
@@ -45,7 +47,7 @@ const val = (id) => dlg?.querySelector("#" + id)?.value || "";
 export function openLogin(pid) { location.assign('/login'); }
 function leaderSettings(){
  const s=store.snapshot;if(s.auth?.me?.role!=='lead')return openLogin();
- modal(`<h3>组长设置</h3><p>管理当前项目和团队</p><div class="leader-settings"><button class="btn pri" data-cmd="hx-wizard-edit">编辑项目与分工</button><button class="btn" data-cmd="go:people">管理组员与邀请</button><button class="btn" data-cmd="ck-cloud">Notion 同步设置</button><button class="btn" data-cmd="go:models">人工智能设置</button></div><p class="sub">${esc(s.project?.name||'当前项目')}</p><div class="row-end"><button class="btn" data-cmd="modal-close">关闭</button></div>`);
+ modal(`<h3>组长设置</h3><p>管理当前项目和团队</p><div class="leader-settings"><button class="btn pri" data-cmd="hx-wizard-edit">编辑项目与分工</button><button class="btn" data-cmd="go:people">管理组员与邀请</button><button class="btn" data-cmd="ck-cloud">云数据库同步设置</button><button class="btn" data-cmd="go:models">人工智能设置</button></div><p class="sub">${esc(s.project?.name||'当前项目')}</p><div class="row-end"><button class="btn" data-cmd="modal-close">关闭</button></div>`);
 }
 
 function openSetPin(pid) {
@@ -107,14 +109,7 @@ const RS = { completed: ["完成", "ok"], running: ["执行中", "info"], unknow
 const SS = { done: "#10b981", requested: "#38bdf8", failed: "#f59e0b", unknown: "#ef4444", acknowledged: "#a78bfa", pending: "#cbd5e1" };
 
 function runsView(s,ui=store.ui){
- const person=s.auth?.me,scope=ui.taskScope||(person?.role==='lead'?'week':'mine'),week=s.sprint?.current_week;
- const all=s.plan?.tasks||s.sprint?.pairs||[],mine=t=>!!person&&(!!t.my_role||[t.owner,t.cross_reviewer].includes(person.name));
- const tasks=all.filter(t=>scope==='all'||(scope==='mine'?mine(t):+t.week===+week));
- const options=[['week','本周任务'],['mine','我的任务'],['all','全部计划']];
- const row=t=>{const can=mine(t),checkin=ckMain(checkinOf(s,t.task_id)),progressLabel=checkin?`${(CK_STATE[checkin.state]||[checkin.state])[0]} · ${checkin.progress||0}%`:taskStatus(t.status);
-  return `<article class="card task-card"><div class="task-card-head"><h2>${esc(t.deliverable||'待补充任务名称')}</h2><span class="pill">${esc(progressLabel)}</span></div><div class="task-facts"><span>负责人：<b>${esc(t.owner||'待分配')}</b></span><span>复核人：<b>${esc(t.cross_reviewer||'待分配')}</b></span><span>截止：<b>${esc(t.end||'待设置')}</b></span><span>第 ${esc(t.week)} 周</span></div><section><h4>亲手做什么</h4><p>${esc(t.human_work||'按任务要求实际操作，保存过程、输入输出和本人观察。')}</p></section><section><h4>完成时交什么</h4><p>${esc(taskOutput(t))}</p></section><details><summary>查看验收要求和任务编号</summary><p>${esc(t.acceptance||'请与负责人确认验收要求')}</p><p class="sub">任务编号：${esc(t.task_id)}${t.depends_on?.length?' · 前置任务：'+t.depends_on.map(esc).join('、'):''}</p></details><div class="task-actions">${can?`<button class="btn pri" data-cmd="hr-start:${esc(t.task_id)}">开始本人实操</button><button class="btn" data-cmd="ck-open:${esc(t.task_id)}">更新进度</button>`:'<span class="sub">由任务负责人或复核人执行</span>'}<button class="btn" data-sel="task:${esc(t.task_id)}">查看任务详情</button></div></article>`;
- };
- return `<div class="vh"><div><h1>任务与实操</h1><p class="lede">看清任务，亲手完成，提交成果，再由另一人复核。</p></div></div><div class="task-tabs">${options.map(([id,label])=>`<button class="btn ${scope===id?'pri':''}" data-cmd="task-scope:${id}">${label}</button>`).join('')}<span class="sub">共 ${tasks.length} 项</span></div><div class="task-list">${tasks.map(row).join('')||'<div class="card empty">暂时没有分配给你的任务。可以查看全部计划，或联系组长安排。</div>'}</div>${humanCards(s)}<details class="card advanced-tasks"><summary>人工智能辅助、计划确认与审核详情</summary>${advancedRunsView(s)}</details>`;
+ return relayTasks(s,ui,store.prefs)+humanCards(s)+`<details class="card advanced-tasks"><summary>人工智能辅助、计划确认与审核详情</summary>${advancedRunsView(s)}</details>`;
 }
 
 function advancedRunsView(s) {
@@ -281,7 +276,7 @@ async function copyMemberInvite() {
  catch {field.select();ctx.toast('请按 Ctrl+C 复制');}
 }
 
-views.runs = { ...views.runs, title: "任务与实操", render: runsView, badge: (s) => (s.agent_runs?.runs || []).filter((r) => r.status === "unknown").length };
+views.runs = { ...views.runs, title: "任务与成果", render: runsView, badge: (s) => (s.agent_runs?.runs || []).filter((r) => r.status === "unknown").length };
 
 views.models = { ...views.models, render: modelsView };
 

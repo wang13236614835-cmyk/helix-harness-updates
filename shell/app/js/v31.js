@@ -1,6 +1,6 @@
 // Helix 3.2.0：设置页（程序更新 + 外观 + 高级），以及更新相关命令。
-import { store, esc } from "./core/store.js?v=3110";
-import { views } from "./views/index.js?v=3110";
+import { store, esc } from "./core/store.js?v=3301";
+import { views } from "./views/index.js?v=3301";
 
 let ctx = null, loading = false;
 export function initV31(c) { ctx = c; }

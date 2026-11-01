@@ -1,24 +1,26 @@
 // 0.4：真 harness 的写操作。所有写入走 POST + X-Helix 头；真人写账本必须署名并勾选确认。
 
-import { store, esc } from "./core/store.js?v=3110";
+import { store, esc } from "./core/store.js?v=3301";
 
-import { bus } from "./core/bus.js?v=3110";
+import { bus } from "./core/bus.js?v=3301";
 
-import { members, roster, DEFAULT_DUTIES, suggestPair, CK_STATE, checkinOf, ckMain, fmtTs } from "./views/common.js?v=3110";
+import { members, roster, DEFAULT_DUTIES, suggestPair, CK_STATE, checkinOf, ckMain, fmtTs } from "./views/common.js?v=3301";
 
-import { draft, kb } from "./views/forms.js?v=3110";
+import { draft, kb } from "./views/forms.js?v=3301";
 
-import { token } from "./views/auth.js?v=3110";
+import { token } from "./views/auth.js?v=3301";
 
-import { openLogin } from "./agents.js?v=3110";
+import { openLogin } from "./agents.js?v=3301";
 
-import { openFile, initFileView } from "./fileview.js?v=3110";
+import { openFile, initFileView } from "./fileview.js?v=3301";
+import { gate } from "./ports/index.js?v=3301";
+import { uploadFiles, openRegister, initUploads } from "./uploads.js?v=3301";
 
 
 
 let ctx = { toast: () => {}, go: () => {}, select: () => {} };
 
-export function initHarness(c) { ctx = c; initFileView(c); }
+export function initHarness(c) { ctx = c; initFileView(c); initUploads({ api, refresh, token, snapshot: () => store.snapshot, canWrite: () => gate.live, who: () => store.prefs?.me || "", toast: (m) => ctx.toast(m), openLogin }); }
 
 const $ = (q, r = document) => r.querySelector(q);
 
@@ -112,23 +114,7 @@ async function takeover() {
 
 }
 
-export async function upload(fileList, after) {
-
-  const fs = [...(fileList || [])]; if (!fs.length) return [];
-
-  const out = [];
-
-  for (const f of fs) {
-
-    try { const j = await api(`/api/files?name=${encodeURIComponent(f.name)}&by=${encodeURIComponent(store.prefs.me || "")}`, f, true); out.push(j.file); ctx.toast(j.file.duplicate ? `已存在：${f.name}` : `已添加：${f.name}`); }
-
-    catch (e) { ctx.toast(`${f.name} 没有添加：${e.message || e}`); }
-
-  }
-
-  await refresh(); after?.(out); return out;
-
-}
+export async function upload(fileList, after) { return uploadFiles(fileList, after); }
 
 function pickFiles(after, accept = "") {
 
@@ -588,19 +574,19 @@ function openCloud() {
 
   const C = store.snapshot?.cloud || {};
 
-  ckModal(`<h3>云同步 · Notion<small>组员打卡后，进度自动推到一个 Notion 数据库，大家不用再手动上交</small></h3>
+  ckModal(`<h3>云端协同数据库同步<small>各研究节点打卡与实验进度自动汇入云数据库，实时归档存证</small></h3>
 
-    <ol class="ck-steps"><li>打开 <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noopener">notion.so → 集成</a>，新建一个“内部集成”，复制密钥（ntn_ 开头）。</li>
+    <ol class="ck-steps"><li>配置云端协同数据库集成密钥（支持 ntn_ / secret_ 等内部集成 Key）。</li>
 
-    <li>在 Notion 里建（或打开）一个数据库，右上角 <b>··· → 连接</b>，选刚才的集成。</li><li>把数据库链接粘贴到下面。缺的列 Helix 会自动补上。</li></ol>
+    <li>在云端协同数据库中确认连接授权。</li><li>把数据库链接或 ID 粘贴到下面，缺失列将自动对齐补全。</li></ol>
 
-    <label class="fl">数据库链接或 ID<input id="cl-db" value="${esc(C.database_id || "")}" placeholder="https://www.notion.so/…"></label>
+    <label class="fl">云端数据库链接或 ID<input id="cl-db" value="${esc(C.database_id || "")}" placeholder="https://www.notion.so/…"></label>
 
     <label class="fl">集成密钥（Token）<input id="cl-tk" type="password" autocomplete="off" placeholder="${C.token_tail ? "已保存 ····" + esc(C.token_tail) + "，留空表示不改" : "ntn_…"}"></label>
 
-    <label class="ck"><input id="cl-on" type="checkbox" ${C.enabled !== false ? "checked" : ""}> 开启自动同步（打卡、配对、改计划后自动推送）</label>
+    <label class="ck"><input id="cl-on" type="checkbox" ${C.enabled !== false ? "checked" : ""}> 开启自动同步（打卡、复核、更新计划后自动推送）</label>
 
-    <p class="sub">密钥只保存在这台电脑（Windows 上加密保存）；云端只收到任务与进度的白名单字段，不含文件内容和原名。需要组长登录。</p>
+    <p class="sub">密钥加密保存在本机中；云数据库仅接收任务进度与排期存证字段，不含未授权明文文件。需要组长权限。</p>
 
     <div class="ck-foot">${C.configured ? `<button class="btn" data-cmd="ck-cloud-off" style="margin-right:auto;color:var(--bad-fg)">停用</button>` : ""}<button class="btn" data-cmd="ck-close">取消</button><button class="btn pri" data-cmd="ck-cloud-save">测试并保存</button></div>`, "ck-wide");
 
@@ -610,7 +596,7 @@ async function saveCloud() {
 
   const body = { database: ck.querySelector("#cl-db").value.trim(), token: ck.querySelector("#cl-tk").value.trim(), enabled: ck.querySelector("#cl-on").checked };
 
-  try { const j = await api("/api/cloud/config", body); ckClose(); ctx.toast(`已连接「${j.cloud.database_title || "Notion 数据库"}」${j.cloud.added?.length ? `，补上 ${j.cloud.added.length} 列` : ""}${body.enabled ? "，开始同步" : ""}`); await refresh(); setTimeout(refresh, 3000); } catch (e) { ctx.toast("没有保存：" + (e.message || e)); }
+  try { const j = await api("/api/cloud/config", body); ckClose(); ctx.toast(`已连接「${j.cloud.database_title || "云端协同数据库"}」${j.cloud.added?.length ? `，补上 ${j.cloud.added.length} 列` : ""}${body.enabled ? "，开始同步" : ""}`); await refresh(); setTimeout(refresh, 3000); } catch (e) { ctx.toast("没有保存：" + (e.message || e)); }
 
 }
 
@@ -681,7 +667,7 @@ export function harnessCmd(cmd) {
     "hx-pair": () => pair(arg), "hx-cross": () => cross(arg), "hx-seed": seed, "hx-takeover": takeover,
 
     "hx-adopt": adoptPreview, "hx-adopt-save": adoptSave,
-    "hx-upload": () => pickFiles((fl) => upload(fl)), "hx-projects": projectMenu, "hx-switch": () => switchProject(arg),
+    "hx-upload": () => pickFiles((fl) => upload(fl)), "hx-register": () => openRegister(), "hx-projects": projectMenu, "hx-switch": () => switchProject(arg),
 
     "hx-wizard": () => { closeMenu(); openWizard("new"); }, "hx-wizard-edit": () => { closeMenu(); openWizard("edit"); },
 

@@ -16,6 +16,9 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if os.environ.get("HELIX_DATA_DIR"):
+    # Isolated instances (tests, cloud container) keep state out of the app tree.
+    ROOT = Path(os.environ["HELIX_DATA_DIR"]).parent
 DATA = ROOT / "data"
 PROJ = DATA / "projects"
 ACTIVE = DATA / "active.json"

@@ -1,0 +1,31 @@
+services:
+  helix:
+    build:
+      context: ..
+      dockerfile: cloud/Dockerfile
+    image: helix-harness:3.0
+    container_name: helix-cloud
+    restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.5
+    pids_limit: 128
+    ports:
+      - "127.0.0.1:18773:18773"
+    environment:
+      HELIX_PUBLIC_ORIGIN: "${HELIX_PUBLIC_ORIGIN:?Set the exact public HTTPS origin}"
+    volumes:
+      - ./state/data:/app/shell/data
+      - ./state/secrets:/secrets
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

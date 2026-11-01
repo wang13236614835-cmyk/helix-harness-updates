@@ -2,7 +2,7 @@
 
 // 即可替换。helixPayload 与 2.00 ui/helix_view.helix_payload 完全同构，所以 1.00/2.00 的动效可以原样接入。
 
-import native from "./native.js?v=3110";
+import native from "./native.js?v=3301";
 
 const v2 = {
 

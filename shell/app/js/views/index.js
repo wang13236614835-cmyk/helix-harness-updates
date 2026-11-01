@@ -1,8 +1,10 @@
-import { esc, short, av, statusPill, bondTag, GATE_C, fmtTs, crossState, members, workload, roster, ROLE_LABEL, MEMBER_COLORS, canon, isHold, evTag, actorKind, ceilLabel, portLabel, projectStatusLabel, dutyBoard, dutyChip, checkinOf, ckMain, ckPill, ckBar, canCheckin, CK_STATE } from "./common.js?v=3110";
+import { researchProgressCard } from "../research_progress.js?v=3301";
+import { esc, short, av, statusPill, bondTag, GATE_C, fmtTs, crossState, members, workload, roster, ROLE_LABEL, MEMBER_COLORS, canon, isHold, evTag, actorKind, ceilLabel, portLabel, projectStatusLabel, dutyBoard, dutyChip, checkinOf, ckMain, ckPill, ckBar, canCheckin, CK_STATE } from "./common.js?v=3301";
 
-import { dataView } from "./forms.js?v=3110";
+import { dataView } from "./forms.js?v=3301";
+import { taskStater, relayHome } from "../relay.js?v=3301";
 
-import { researchView, toolsView } from "../science.js?v=3110";
+import { researchView, toolsView } from "../science.js?v=3301";
 
 const I = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
@@ -46,33 +48,9 @@ export function weekStats(s) {
 
   const weekOf = (t) => +t.week || +(String(t.task_id).match(/^W(\d+)-/) || [])[1] || 0;
 
-  const byTask = new Map(); for (const b of items) if (b.task_id) (byTask.get(b.task_id) || byTask.set(b.task_id, []).get(b.task_id)).push(b);
+  const stateOf = taskStater(s);
 
-  const stateOf = (t) => {
 
-    const tb = byTask.get(t.task_id) || [], seeds = tb.filter((b) => b.kind === "task"), g = G[t.task_id]?.state && String(G[t.task_id].state).toLowerCase();
-
-    if (g === "passed") return "passed";
-
-    if (g === "failed") return "failed";
-
-    if (g === "disputed" || tb.some((b) => canon(b.status) === "disputed")) return "disputed";
-
-    if (g === "deferred" || g === "hold" || seeds.some(isHold)) return "hold";
-
-    if (g === "blocked") return "blocked";
-
-    if (!tb.length || g === "unseeded") return "unseeded";
-
-    if (tb.some((b) => canon(b.status) === "open")) return "primary";
-
-    if (tb.some((b) => b.needs_cross && !b.cross)) return "cross";
-
-    if (!g && seeds.length && seeds.every((b) => b.cross?.agree === true && String(b.decision).toUpperCase() === "PASS")) return "passed"; // 无 gates 的旧数据源
-
-    return "open";
-
-  };
 
   return (sp.weeks || []).map((w) => {
 
@@ -181,11 +159,11 @@ function cloudCard(s) {
 
   const C = s.cloud || {}, admin = s.auth?.me?.role === "lead" || s.auth?.bootstrap;
 
-  return `<div class="card" style="margin-bottom:14px"><h3>组内打卡 · 云同步<small>组员在 Helix 里打卡，进度自动推到 Notion 数据库，不用再手动上交</small><span class="sp" style="flex:1"></span>${C.configured ? `<button class="btn sm" data-cmd="ck-sync">立即同步</button>` : ""}${admin ? `<button class="btn sm${C.configured ? "" : " pri"}" data-cmd="ck-cloud">${C.configured ? "设置" : "连接 Notion"}</button>` : ""}</h3>
+  return `<div class="card" style="margin-bottom:14px"><h3>科研协同 · 云端数据库同步<small>研究节点打卡与实验进度自动汇入云端数据库，多端实时归档存证</small><span class="sp" style="flex:1"></span>${C.configured ? `<button class="btn sm" data-cmd="ck-sync">立即同步</button>` : ""}${admin ? `<button class="btn sm${C.configured ? "" : " pri"}" data-cmd="ck-cloud">${C.configured ? "设置" : "连接云数据库"}</button>` : ""}</h3>
 
     ${C.configured ? `<dl class="kv"><dt>状态</dt><dd>${C.enabled ? (C.last_ok === false ? `<span class="pill bad">同步失败</span> ${esc(C.last_error)}` : `<span class="pill ok">已开启</span>`) : `<span class="pill">已停用</span>`}</dd><dt>数据库</dt><dd><a href="${esc(C.url)}" target="_blank" rel="noopener">${esc(C.database_title || C.database_id)}</a></dd><dt>上次同步</dt><dd>${fmtTs(C.last_sync)}${C.last_ok ? `（推送 ${C.pushed}，未变 ${C.skipped}）` : ""}</dd><dt>已同步</dt><dd>${C.rows} 条任务</dd><dt>Token</dt><dd class="mono">····${esc(C.token_tail)}</dd></dl>`
 
-    : `<p class="sub" style="margin:0">${admin ? "点“连接 Notion”，按提示粘贴集成 Token 和数据库链接即可。" : "需要组长在这里连接 Notion。"}</p>`}
+    : `<p class="sub" style="margin:0">${admin ? "点“连接云数据库”，按提示配置集成密钥与数据库链接即可。" : "需要组长在此连接云端协同数据库。"}</p>`}
 
     <p class="mono" style="margin:8px 0 0">只同步：任务编号、交付物、验收、职能、周、截止、主核 / 交叉核（显示名）、打卡状态、进度、最近打卡说明、成果文件名、审核状态。文件内容、原名、口令都不会离开本机；账本仍以本机为准。</p></div>`;
 
@@ -205,51 +183,11 @@ export { weekBand };
 
 export const views = {
 
-  cockpit: { title: "工作台首页", icon: "cockpit", render: (s, ui, prefs) => {
-
-    const m = s.metrics || {}, sp = s.sprint || {}, me = prefs?.me || "";
-
-    const wk = (sp.weeks || []).find((w) => w.week === sp.current_week) || {};
-
-    const gates = s.skeleton?.gates || [], gatesOpen = gates.filter((g) => GATE_C[g.raw_status] !== "ok").length;
-
-    const state = (t) => t.disputed ? ["两人结论不一致，需要当面对一下", "bad", 0] : t.open ? [`等 ${t.owner} 主核`, "warn", 1] : (t.bases && t.crossed < t.bases) ? [`等 ${t.cross_reviewer} 交叉核`, "warn", 2] : t.crossed ? ["双人核对完成", "ok", 4] : ["还没开始", "", 3];
-
-    const mine = (t) => me && (t.owner === me || t.cross_reviewer === me);
-
-    const rows = (sp.pairs || []).map((t) => ({ t, st: state(t) })).sort((a, b) => (mine(b.t) - mine(a.t)) || (a.st[2] - b.st[2]));
-
-    const todo = rows.filter((r) => r.st[2] < 3).length;
-
-    const row = ({ t, st }) => `<div class="todo ${mine(t) ? "me" : ""} ${ui.sel === "task:" + t.task_id ? "on" : ""}" data-sel="task:${esc(t.task_id)}">
-
-      ${av(s, t.owner)}<div class="todo-main"><div class="todo-title"><b>${esc(t.task_id)}</b><span>${esc(t.deliverable)}</span></div>
-
-      <div class="todo-who">主核 ${esc(t.owner)}，交叉核 ${esc(t.cross_reviewer)}${mine(t) ? `<em>与我有关</em>` : ""}</div>${ckLine(s, t, prefs)}</div>
-
-      <div class="todo-state ${st[1]}">${esc(st[0])}</div><div class="todo-due">截止 ${esc(String(t.end || wk.end || "").slice(5))}</div></div>`;
-
-    return `<div class="vh"><div><h1>今日驾驶舱</h1><p class="lede">第 ${sp.current_week ?? "?"} 周：${esc(wk.track_label || "")}，${sp.days_left===0?"<b>今天截止</b>":`还剩 <b>${sp.days_left ?? "—"}</b> 天`}。${s.harness?.seedable ? "本周任务还没播种：点右上角按钮，任务会进入收件箱等真人主核。" : todo ? `本周有 <b>${todo}</b> 项等人处理。` : "本周任务都已处理。"}</p></div><span class="sp"></span>
-
-      <button class="btn" data-cmd="dock">智能体控制台</button>${s.harness?.seedable ? `<button class="btn pri" data-cmd="hx-seed">播种第 ${s.harness.seed_week} 周任务</button>` : s.harness?.can_takeover ? `<button class="btn pri" data-cmd="hx-takeover">在本机建立账本</button>` : s.harness?.writable ? `<button class="btn pri" data-view="inbox">去收件箱配对</button>` : `<button class="btn pri" data-cmd="primer">写引物</button>`}</div>
-
-    <div class="stage" id="stage"><div class="stage-tools"><div class="seg" id="motionSeg"></div></div></div>
-
-    <div class="strip">${[["待主核", m.open_tasks ?? 0, "warn"], ["待交叉核", m.cross_pending ?? 0, "warn"], ["双人一致", m.duplex ?? 0, "ok"], ["结论分歧", m.disputed ?? 0, (m.disputed ? "bad" : "")]].map(([a, b, c]) => `<div class="stat ${b ? c : ""}"><b>${b}</b><span>${a}</span></div>`).join("")}
-
-      <div class="stat wide" data-sel="view:evidence"><span>项目状态</span><strong title="${esc(s.project?.status || "")}">${esc(projectStatusLabel(s.project?.status))}</strong><small>结论最高只能写到 ${esc(ceilLabel(s.project?.claim_ceiling) || "—")}；${gates.length ? `${gatesOpen}/${gates.length} 道证据门未通过` : `${(sp.red_lines || []).length} 条红线由机器校对`}</small></div></div>
-
-    <section class="block"><header><h2>本周要做的事</h2><span>${me ? `与「${esc(me)}」有关的排在最前` : `在标题栏选“我是…”，与你有关的会排在最前`}</span><span class="sp"></span>${teamHead(s)}</header>
-
-      <div class="todos">${rows.length ? rows.map(row).join("") : `<div class="empty">本周没有任务。${s.harness?.kind === "local" ? `<button class="link" data-cmd="hx-wizard-edit">编辑计划</button>` : "检查四周计划文件是否能读到。"}</div>`}</div></section>
-
-    ${s.plan ? `<section class="block"><header><h2>本周分工：谁在干什么</h2><span>按职能分派；点人名或任务看详情</span><span class="sp"></span><button class="link" data-view="people">完整分工</button></header>${board(s, ui, prefs, true)}</section>` : ""}
-
-    <p class="more"><button class="link" data-cmd="welcome">查看四周安排、红线和使用提示</button></p>`; } },
+  cockpit: { title: "科研接力台", icon: "cockpit", render: (s, ui, prefs) => relayHome(s, ui, prefs, { board, teamHead, researchProgressCard }) },
 
 
 
-  inbox: { title: "任务审核", icon: "inbox", badge: (s) => (s.metrics?.open_tasks || 0) + (s.metrics?.cross_pending || 0) + (s.metrics?.open_gc || 0), render: (s, ui, prefs) => {
+  inbox: { title: "双人交叉复核区", icon: "inbox", badge: (s) => (s.metrics?.open_tasks || 0) + (s.metrics?.cross_pending || 0) + (s.metrics?.open_gc || 0), render: (s, ui, prefs) => {
 
     const items = (s.items || []).filter((b) => b.status === "open" || b.status === "audit" || (b.needs_cross && !b.cross) || b.status === "disputed");
 
@@ -265,7 +203,7 @@ export const views = {
 
 
 
-  runs: { title: "运行轨迹", icon: "runs", render: (s) => {
+  runs: { title: "科研任务协同区", icon: "runs", render: (s) => {
 
     const items = s.items || [], m = s.metrics || {};
 
@@ -281,7 +219,7 @@ export const views = {
 
 
 
-  crew: { title: "智能体编队", icon: "crew", render: (s, ui) => {
+  crew: { title: "智能体协同编队", icon: "crew", render: (s, ui) => {
 
     const ag = s.agents || [], mcp = s.mcp || [], mem = members(s);
 
@@ -313,7 +251,7 @@ export const views = {
 
 
 
-  people: { title: "成员", icon: "people", badge: (s) => (s.people?.discovered || []).length, render: (s, ui, prefs) => {
+  people: { title: "科研团队与人员分工区", icon: "people", badge: (s) => (s.people?.discovered || []).length, render: (s, ui, prefs) => {
 
     const P = s.people || {}, ro = roster(s), disc = P.discovered || [], ed = ui.edit;
 
@@ -347,11 +285,11 @@ export const views = {
 
 
 
-  data: { title: "项目文件", icon: "data", badge: () => 0, render: dataView },
+  data: { title: "实验成果与数据集区", icon: "data", badge: () => 0, render: dataView },
 
 
 
-  evidence: { title: "证据骨架", icon: "evidence", render: (s) => {
+  evidence: { title: "证据链与推导骨架", icon: "evidence", render: (s) => {
 
     const k = s.skeleton || {};
 
@@ -375,7 +313,7 @@ export const views = {
 
 
 
-  models: { title: "模型工坊", icon: "models", render: (s) => {
+  models: { title: "模型与计算工坊", icon: "models", render: (s) => {
 
     const md = s.models || {}, roles = md.roles || {};
 
@@ -393,7 +331,7 @@ export const views = {
 
 
 
-  ledger: { title: "账本与复现", icon: "ledger", render: (s) => {
+  ledger: { title: "不可篡改存证账本", icon: "ledger", render: (s) => {
 
     const t = s.ledger?.tail || [];
 
@@ -407,9 +345,11 @@ export const views = {
 
 
 
-  settings: { title: "设置", icon: "settings", render: (s, ui, prefs, reg) => head(s, "设置") + `<div class="grid g2">
+  settings: { title: "系统与云端协同设置", icon: "settings", render: (s, ui, prefs, reg) => head(s, "系统与云端协同设置") + `<div class="grid g2">
 
     <div class="card"><h3>数据端口<small>换数据 = 换端口，视图不改</small></h3>${Object.values(reg.ports).map((p) => `<label class="pair" style="grid-template-columns:auto 1fr"><input type="radio" name="port" value="${p.id}" ${prefs.port === p.id ? "checked" : ""}><div><b>${esc(p.label)}</b><small>${p.id}</small></div></label>`).join("")}<label class="pair" style="grid-template-columns:auto 1fr"><input type="radio" name="port" value="auto" ${prefs.port === "auto" ? "checked" : ""}><div><b>自动</b><small>连接本机服务；断开时只读显示最后一次真实数据并自动重连，不会切到演示</small></div></label><p class="mono">数据格式：helix.snapshot.v1 · 当前：${esc(portLabel(s.port?.kind))} ${esc(s.port?.detail || "")}</p></div>
+
+    <div class="card"><h3>爱维云端协同控制<small>统一云端数据库与科研账本存证</small></h3><p>连接爱维云端服务后，全量科研任务、排期与实操账本自动同步，组员可直接在应用内注册加入团队，多端实时归档协同。</p><button class="btn" data-cmd="helix-remote">打开云端协同与数据同步</button></div>
 
     <div class="card"><h3>动效包<small>数据格式与 2.00 版 helix_payload 一致</small></h3>${Object.values(reg.motion).map((p) => `<label class="pair" style="grid-template-columns:auto 1fr"><input type="radio" name="motion" value="${p.id}" ${prefs.motion === p.id ? "checked" : ""}><div><b>${esc(p.label)}</b><small>${p.id}</small></div></label>`).join("")}
 
@@ -419,9 +359,9 @@ export const views = {
 
 };
 
-views.research = { title: "项目研究资料", icon: "evidence", render: researchView };
+views.research = { title: "项目文献与研究资料区", icon: "evidence", render: (s, ui, prefs) => researchProgressCard(s) + researchView(s, ui, prefs) };
 
-views.tools = { title: "科学工具", icon: "crew", render: toolsView };
+views.tools = { title: "科学计算与工具区", icon: "crew", render: toolsView };
 
 export const ORDER = ["cockpit", "inbox", "data", "research", "tools", "runs", "crew", "people", "evidence", "models", "ledger"];
 

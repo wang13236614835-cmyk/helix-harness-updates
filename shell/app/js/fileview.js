@@ -1,11 +1,11 @@
-import { fileName } from "./presentation.js?v=3110";
+import { fileName } from "./presentation.js?v=3301";
 // 0.5.2 看原文：在页面里打开已登记文件（表格 / PDF / 文本 / 图片），选中一句即可作为“原文摘录”。只读。
 
-import { store, esc } from "./core/store.js?v=3110";
+import { store, esc } from "./core/store.js?v=3301";
 
-import { draft, kb } from "./views/forms.js?v=3110";
+import { draft, kb } from "./views/forms.js?v=3301";
 
-import { canon } from "./views/common.js?v=3110";
+import { canon } from "./views/common.js?v=3301";
 
 
 

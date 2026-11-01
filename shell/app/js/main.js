@@ -1,28 +1,31 @@
-import { store, esc, short } from "./core/store.js?v=3110";
+import { store, esc, short } from "./core/store.js?v=3301";
 
-import { bus } from "./core/bus.js?v=3110";
+import { bus } from "./core/bus.js?v=3301";
 
-import { ports, connectPort, gate, WRITE_CMD } from "./ports/index.js?v=3110";
+import { ports, connectPort, gate, WRITE_CMD } from "./ports/index.js?v=3301";
 
-import { motionPacks, mountMotion } from "./motion/index.js?v=3110";
+import { motionPacks, mountMotion } from "./motion/index.js?v=3301";
 
-import { views, ORDER, ICONS, weekBand } from "./views/index.js?v=3110";
+import { views, ORDER, ICONS, weekBand } from "./views/index.js?v=3301";
 
-import { inspector } from "./views/inspector.js?v=3110";
+import { inspector } from "./views/inspector.js?v=3301";
 
-import { side } from "./views/side.js?v=3110";
+import { side } from "./views/side.js?v=3301";
 
-import { members, roster, workload, MEMBER_COLORS, av, portLabel, UI_EV, ceilLabel, projectStatusLabel } from "./views/common.js?v=3110";
+import { members, roster, workload, MEMBER_COLORS, av, portLabel, UI_EV, ceilLabel, projectStatusLabel } from "./views/common.js?v=3301";
 
-import { initHarness, harnessCmd, openWizard, isWizardOpen, wizardKey, pairKey, api, refresh } from "./harness.js?v=3110";
+import { initHarness, harnessCmd, openWizard, isWizardOpen, wizardKey, pairKey, api, refresh } from "./harness.js?v=3301";
 
-import { initAgents, agentCmd, titleAuth, closeModal } from "./agents.js?v=3110";
+import { initAgents, agentCmd, titleAuth, closeModal } from "./agents.js?v=3301";
 
-import { initScience } from "./science.js?v=3110";
+import { initScience } from "./science.js?v=3301";
 
-import { teamView, initLocalTeam, localTeamCmd } from "./local_team.js?v=3110";
-import {initProjectImport,projectImportCmd} from "./project_import.js?v=3110";
-import { initV31, v31Cmd } from "./v31.js?v=3110";
+import { teamView, initLocalTeam, localTeamCmd } from "./local_team.js?v=3301";
+import {initProjectImport,projectImportCmd} from "./project_import.js?v=3301";
+import { initV31, v31Cmd } from "./v31.js?v=3301";
+import { initHelixRemote, helixRemoteCmd } from "./helix_remote.js?v=3301";
+import { uploadCapabilities } from "./uploads.js?v=3301";
+import { initRelay, relayCmd } from "./relay.js?v=3301";
 views.team={title:"我的分工与学习",icon:"people",render:teamView};
 initScience();
 
@@ -46,12 +49,14 @@ function applyPrefs() {
 
 }
 
+// 左侧导航顺序 = 数字快捷键顺序：首页 → 任务 → 审核 → 文件 → 资料 → 工具 → 成员
+const navIds = (s) => [...(s?.local_team ? ["team"] : []), "cockpit", "runs", "inbox", "data", "research", "tools", "people"];
 const NAV_LB = { team: "分工", cockpit: "首页", runs: "任务", data: "文件", research: "资料", tools: "工具", people: "成员", inbox: "审核", settings: "设置" };
 function activity() {
 
   const s = store.snapshot;
 
-  $(".act").innerHTML = [...(s?.local_team?["team"]:[]),"cockpit","runs","data","research","tools","people","inbox"].map((id) => { const v = views[id]; const n = s && v.badge ? v.badge(s) : 0; return `<button data-view="${id}" data-tip="${v.title}" aria-label="${v.title}" class="${store.ui.view === id ? "on" : ""}">${ICONS[v.icon]}<span class="lb">${NAV_LB[id] || v.title}</span>${n ? `<span class="n">${n}</span>` : ""}</button>`; }).join("") +
+  $(".act").innerHTML = navIds(s).map((id) => { const v = views[id]; const n = s && v.badge ? v.badge(s) : 0; return `<button data-view="${id}" data-tip="${v.title}" aria-label="${v.title}" class="${store.ui.view === id ? "on" : ""}">${ICONS[v.icon]}<span class="lb">${NAV_LB[id] || v.title}</span>${n ? `<span class="n">${n}</span>` : ""}</button>`; }).join("") +
 
     `<div class="sp"></div><button data-view="settings" data-tip="设置" aria-label="设置" class="${store.ui.view === "settings" ? "on" : ""}">${ICONS.settings}<span class="lb">设置</span></button>`;
 
@@ -61,14 +66,14 @@ function lights() {
   const s = store.snapshot, m = s?.mode, net = window.__helixNet || {};
   const [cls, txt] = net.updating ? ["upd", "正在更新…"] : !m ? ["bad", "正在连接…"] : m === "offline" ? ["bad", "连接断开 · 重连中"] : m === "demo" ? ["warn", "演示数据"] : m === "file" ? ["warn", "快照只读"] : net.retrying ? ["warn", "重连中…"] : ["ok", "已连接"];
   const c = s?.cloud || {}, pend = (c.pending || []).length;
-  const sync = c.enabled ? `<span class="sync ${c.last_ok === false ? "bad" : pend ? "warn" : "ok"}" data-cmd="ck-cloud" title="${esc(c.last_error ? "上次同步失败：" + c.last_error : c.last_sync ? "上次同步 " + hhmm(c.last_sync) : "团队同步（Notion）")}">${c.last_ok === false ? "同步失败 · 将自动重试" : pend ? `待同步 ${pend}` : "团队已同步"}</span>` : "";
+  const sync = c.enabled ? `<span class="sync ${c.last_ok === false ? "bad" : pend ? "warn" : "ok"}" data-cmd="ck-cloud" title="${esc(c.last_error ? "上次同步失败：" + c.last_error : c.last_sync ? "上次同步 " + hhmm(c.last_sync) : "云端团队协同同步")}">${c.last_ok === false ? "同步失败 · 将自动重试" : pend ? `待同步 ${pend}` : "团队已同步"}</span>` : "";
   $(".lights").innerHTML = `<span class="conn ${cls}" data-view="settings" title="${cls === "ok" ? "本机服务已连接，数据实时更新" : "正在自动重连，恢复后自动刷新；期间只读"}"><i></i>${txt}</span>${sync}`;
 }
 function statusbar() {
   const s = store.snapshot, sp = s?.sprint || {}, d = sp.days_left;
   const left = d == null ? "" : d === 0 ? "今天截止" : d < 0 ? "本周期已结束" : `剩 ${d} 天`;
   const live = !!s && !["offline", "demo", "file"].includes(s.mode);
-  $(".status").innerHTML = `<span><i style="--c:${live ? "var(--ok-dot)" : "var(--warn-dot)"}"></i>${esc(s ? (s.mode === "offline" ? "连接断开 · 自动重连中" : live ? "本机服务已连接" : portLabel(s.port?.kind)) : "正在连接…")}</span>${sp.current_week ? `<span>第 ${sp.current_week} 周${left ? " · " + left : ""}</span>` : ""}<span class="sp"></span>${s?.harness && !s.harness.writable && s.mode !== "live" ? "<span>只读</span>" : ""}<span>Helix ${esc(window.__helixVer || "3.2.0")}</span><span class="kbd" data-cmd="palette">Ctrl K 命令面板</span>`;
+  $(".status").innerHTML = `<span><i style="--c:${live ? "var(--ok-dot)" : "var(--warn-dot)"}"></i>${esc(s ? (s.mode === "offline" ? "连接断开 · 自动重连中" : live ? "本机服务已连接" : portLabel(s.port?.kind)) : "正在连接…")}</span>${sp.current_week ? `<span>第 ${sp.current_week} 周${left ? " · " + left : ""}</span>` : ""}<span class="sp"></span>${s?.harness && !s.harness.writable && s.mode !== "live" ? "<span>只读</span>" : ""}<span>Helix ${esc(window.__helixVer || "3.3.1")}</span><span class="kbd" data-cmd="palette">Ctrl K 命令面板</span>`;
 }
 function dock() {
 
@@ -191,7 +196,7 @@ function render() {
 
   if (viewChanged) { motion?.destroy(); motion = null; }
 
-  const html = `<div class="view" ${viewChanged ? "" : 'style="animation:none"'}>${banner(s)}${s.local_team&&store.ui.view!=="team"?'<p class="lt-entry"><button class="btn" data-cmd="go:team">我的分工与学习 →</button> 先选岗，再看本周任务与本人实操要求</p>':""}${v.render(s, store.ui, store.prefs, { ports, motion: motionPacks })}</div>`;
+  const html = `<div class="view" ${viewChanged ? "" : 'style="animation:none"'}>${banner(s)}${s.local_team&&store.ui.view!=="team"?'<p class="lt-entry"><button class="btn" data-cmd="go:team">进入科研分工与研习区 →</button> 查看专属科研区、本周攻关任务与实操规范</p>':""}${v.render(s, store.ui, store.prefs, { ports, motion: motionPacks })}</div>`;
 
   // 只替换非舞台区域，避免重建 canvas 造成闪烁
 
@@ -292,7 +297,7 @@ const COMMANDS = [
 
   ...ORDER.map((id) => ({ id: "go:" + id, label: "前往 · " + views[id].title, hint: "G" })), { id: "go:settings", label: "前往 · 设置" },
 
-  { id: "side", label: "切换侧栏", hint: "⌘B" }, { id: "insp", label: "切换检查器", hint: "⌘I" }, { id: "dock", label: "切换智能体控制台", hint: "⌘J" },
+  { id: "rl-next", label: "下一步：轮到我的事", hint: "N" }, { id: "rl-report", label: "生成本周周报（Markdown）" }, { id: "side", label: "切换侧栏", hint: "⌘B" }, { id: "insp", label: "切换检查器", hint: "⌘I" }, { id: "dock", label: "切换智能体控制台", hint: "⌘J" },
 
   { id: "motion:native", label: "动效 · 原生双螺旋" }, { id: "motion:v2", label: "动效 · 经典双螺旋" }, { id: "motion:calm", label: "动效 · 静态" },
 
@@ -300,7 +305,8 @@ const COMMANDS = [
 
   { id: "import", label: "导入快照文件…" }, { id: "primer", label: "写引物，启动运行（helixd 阶段）" }, { id: "person-new", label: "添加真人到成员名册" }, { id: "welcome", label: "打开本轮概览（四周安排、红线、提示）" },
 
-  { id: "hx-wizard", label: "新建项目（从头引导：成员、计划、数据、红线）" }, { id: "hx-upload", label: "添加数据文件…" }, { id: "hx-seed", label: "播种本周任务到收件箱" }, { id: "hx-projects", label: "切换项目" },
+  { id: "hx-wizard", label: "新建项目（从头引导：成员、计划、数据、红线）" }, { id: "hx-upload", label: "添加数据文件…" }, { id: "hx-register", label: "登记本机大文件（不复制）…" }, { id: "hx-seed", label: "播种本周任务到收件箱" }, { id: "hx-projects", label: "切换项目" },
+  { id: "helix-remote", label: "云账号与项目同步（登录服务器 / 上传下载项目）" },
 
 ];
 
@@ -348,7 +354,9 @@ function welcomeHTML(s) {
 
           <li><kbd>Ctrl</kbd><kbd>K</kbd><span>搜索任何任务、成员或命令</span></li>
 
-          <li><kbd>1</kbd>–<kbd>9</kbd><span>切换左侧各个页面，驾驶舱是 1，收件箱是 2</span></li>
+          <li><kbd>N</kbd><span>跳到轮到你的下一件事</span></li>
+
+          <li><kbd>1</kbd>–<kbd>7</kbd><span>切换左侧页面：首页 1、任务 2、审核 3、文件 4</span></li>
 
           <li><kbd>J</kbd><kbd>K</kbd><span>在收件箱里上下移动，右侧会显示详情</span></li>
 
@@ -388,7 +396,7 @@ function closeWelcome() { if (!wlEl) return; wlEl.remove(); wlEl = null; store.p
 
 let welcomeChecked = false;
 
-function maybeWelcome() { if (welcomeChecked || !store.snapshot || store.snapshot.mode === "offline") return; welcomeChecked = true; const s = store.snapshot; if(s.generic_mode&&!s.plan)return; if(s.local_team){if(s.local_team.must_select)go("team");return;} if (s.mode === "empty" && !(s.projects || []).some((p) => p.kind === "local")) return openWizard("new"); if (!store.prefs.welcomeOff && store.prefs.welcomeSeen !== today()) openWelcome(); }
+function maybeWelcome() { if (welcomeChecked || !store.snapshot || store.snapshot.mode === "offline") return; welcomeChecked = true; const s = store.snapshot; if(s.generic_mode&&!s.plan)return; if(s.local_team){if(s.local_team.must_select)go("team");return;} if (s.mode === "empty" && !(s.projects || []).some((p) => p.kind === "local")) return openWizard("new"); if (!store.prefs.welcomeOff && !store.prefs.welcomeSeen) openWelcome(); }
 
 
 
@@ -459,9 +467,11 @@ function run(cmd) {
   if(cmd.startsWith('go:') || cmd==='hx-wizard-edit' || cmd==='ck-cloud')closeModal();
 
   if (v31Cmd(cmd)) return;
+  if (relayCmd(cmd)) return;
   if (projectImportCmd(cmd)) return;
   if (localTeamCmd(cmd)) return;
   if (agentCmd(cmd)) return;
+  if (helixRemoteCmd(cmd)) return;
 
   if (harnessCmd(cmd)) return;
 
@@ -511,7 +521,7 @@ function filterPalette() {
 
   const dyn = s ? [...(s.sprint?.pairs || []).map((t) => ({ id: "sel:task:" + t.task_id, label: `任务 · ${t.task_id} ${t.deliverable.slice(0, 26)}`, hint: t.owner })), ...(s.items || []).slice(-40).map((b) => ({ id: "sel:base:" + b.base_id, label: `碱基 · ${b.text.slice(0, 34)}`, hint: b.status }))] : [];
 
-  pitems = [...COMMANDS, ...dyn].filter((c) => !q || c.label.toLowerCase().includes(q.toLowerCase())).slice(0, 12); pidx = 0; drawPalette();
+  pitems = [...COMMANDS, ...dyn].filter((c) => (c.id !== "hx-register" || uploadCapabilities(s || {}).register) && (!q || c.label.toLowerCase().includes(q.toLowerCase()))).slice(0, 12); pidx = 0; drawPalette();
 
 }
 
@@ -549,7 +559,9 @@ document.addEventListener("keydown", (e) => {
 
   if (!mod && pairKey(e)) return;
 
-  if (/^[1-9]$/.test(e.key) && ORDER[+e.key - 1]) go(ORDER[+e.key - 1]);
+  if (/^[1-9]$/.test(e.key) && navIds(store.snapshot)[+e.key - 1]) go(navIds(store.snapshot)[+e.key - 1]);
+
+  if (!mod && !e.altKey && e.key.toLowerCase() === "n") run("rl-next");
 
   if (store.ui.view === "inbox" && /^[jk]$/i.test(e.key)) { const rows = [...document.querySelectorAll(".main tr[data-sel]")]; const i = rows.findIndex((r) => r.dataset.sel === store.ui.sel); const n = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key.toLowerCase() === "j" ? 1 : -1)))]; if (n) select(n.dataset.sel); }
 
@@ -573,6 +585,8 @@ initAgents({ toast, go, api, refresh });
 initLocalTeam({toast,go,api,refresh});
 initProjectImport({toast,go,api,refresh,closeMenu:()=>harnessCmd('hx-projects')});
 initV31({toast,go,api,refresh});
+initHelixRemote({api,refresh});
+initRelay({toast,go,select,run,api,refresh});
 
 store.subscribe(() => { try { render(); } catch (e) { window.__helixReport?.("render", e.stack || e.message); } });
 
@@ -582,7 +596,7 @@ const h = location.hash.replace("#/", ""); if (views[h]) store.ui.view = h;
 
 addEventListener("hashchange", () => { const v = location.hash.replace("#/", ""); if (views[v] && v !== store.ui.view) store.ui_({ view: v }); });
 
-bus.emit("RUN_STARTED", { shell: "helix-shell 3.2.0", schema: "helix.snapshot.v1" });
+bus.emit("RUN_STARTED", { shell: "helix-shell 3.3.1", schema: "helix.snapshot.v1" });
 
 try { render(); } catch (e) { window.__helixReport?.("render", e.stack || e.message); }
 

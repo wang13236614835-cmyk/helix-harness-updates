@@ -362,7 +362,13 @@ class Runtime:
 
     def _task_text(self, r: dict) -> str:
         t = self.ctx.task(r.get("task_id")) or {}
-        return json.dumps({k: t.get(k) for k in ("task_id", "week", "track_label", "deliverable", "acceptance") if t.get(k)}, ensure_ascii=False)
+        task = {k: t.get(k) for k in ("task_id", "week", "track_label", "deliverable", "acceptance") if t.get(k)}
+        learning = getattr(self.ctx, "learning_context", None)
+        if callable(learning):
+            support = learning(t)
+            if support:
+                task["learning_support"] = support
+        return json.dumps(task, ensure_ascii=False)
 
     def _messages(self, r: dict, step: str, out: dict) -> tuple[list[dict], dict]:
         red = "\n".join(f"  · {x}" for x in (self.ctx.red_lines() or [])[:20]) or "  · （本项目未写红线）"
